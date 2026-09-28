@@ -11,6 +11,7 @@ Todas las modificaciones notables a este proyecto serán documentadas en este ar
 - **Logotipos Oficiales con Flechas Verdes y Soporte de Modo Claro / Oscuro**:
   - Incorporadas las imágenes originales de `C:\Proyectos\LOGOS` (`app-monito-oscuro.jfif` y `app-monito-claro.jfif`) como activos oficiales en `apps/movil/assets/`.
   - Corrección de transparencia en activos de logotipo: relleno blanco sólido (`#FFFFFF`) restaurado en la "S" y en los 3 segmentos exteriores del círculo para `icon.png`, `favicon.png`, `splash.png` y `logo-dark.png`, preservando las flechas verdes (`#16A34A` / `#22C55E`), el fondo squircle `#303338` y las transparencias exteriores de esquinas.
+  - Estandarización de assets nativos de Android: creación de `adaptive-icon.png` (1024x1024 px con zona segura del 66%) y actualización de `splash.png` (1024x1024 px centrado) para prevenir que Android 12+ / MIUI muestre la cuadrícula de calibración por defecto durante el arranque en frío.
   - Creación del componente `AppLogo.tsx` que alterna dinámicamente según el tema seleccionado.
 - **Soporte Completo de 3 Modos de Apariencia**:
   - Modo Oscuro, Modo Claro y Automático (sincronizado con el sistema operativo del teléfono mediante `useColorScheme`).
