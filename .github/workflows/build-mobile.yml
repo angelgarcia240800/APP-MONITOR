@@ -62,7 +62,7 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL }}
 
-      - name: Generate latest-mobile.json and Prepare R2 Assets
+      - name: Generate latest-app-monitor.json and Prepare R2 Assets
         shell: bash
         run: |
           VERSION="${{ github.ref_name }}"
@@ -114,12 +114,12 @@ jobs:
               payload.min_version = config.min_version;
             }
 
-            fs.writeFileSync('mobile-release-r2/latest-mobile.json', JSON.stringify(payload, null, 2));
-            console.log('latest-mobile.json generado con éxito:\n', JSON.stringify(payload, null, 2));
+            fs.writeFileSync('mobile-release-r2/latest-app-monitor.json', JSON.stringify(payload, null, 2));
+            console.log('latest-app-monitor.json generado con éxito:\n', JSON.stringify(payload, null, 2));
           "
 
           cp $APK_NAME mobile-release-r2/
-          echo "latest-mobile.json y $APK_NAME preparados para R2."
+          echo "latest-app-monitor.json y $APK_NAME preparados para R2."
 
       - name: Upload to Cloudflare R2
         env:
@@ -169,4 +169,4 @@ jobs:
         with:
           files: |
             APP-MONITOR_${{ github.ref_name }}.apk
-            mobile-release-r2/latest-mobile.json
+            mobile-release-r2/latest-app-monitor.json

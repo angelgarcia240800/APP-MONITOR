@@ -41,7 +41,7 @@ Presenta una interfaz con estética **estrictamente monocromática (Black & Whit
   - Caché persistente en `AsyncStorage` para funcionamiento fluido incluso sin conexión a internet.
 
 - **🔄 Sistema de Actualizaciones Automáticas (OTA / APK)**:
-  - Consulta en segundo plano contra el manifiesto `latest-mobile.json` alojado en **Cloudflare R2**.
+  - Consulta en segundo plano contra el manifiesto `latest-app-monitor.json` alojado en **Cloudflare R2**.
   - Descarga del APK con barra de progreso e invocación del instalador nativo de Android.
 
 ---
@@ -121,7 +121,7 @@ El pipeline de compilación y distribución se ejecuta automáticamente mediante
    - Descarga el código y prepara el entorno Node 22, Java Zulu 17 y EAS CLI.
    - Inyecta la versión del tag en `apps/movil/app.json` y `package.json`.
    - Compila el APK ejecutable localmente: `APP-MONITOR_v1.0.0.apk`.
-   - Genera el manifiesto `latest-mobile.json`.
+   - Genera el manifiesto `latest-app-monitor.json`.
    - Despliega el instalador y el manifiesto al bucket de **Cloudflare R2**.
    - Mantiene automáticamente las últimas 2 versiones activas en R2 para optimizar almacenamiento.
    - Adjunta el APK y el JSON al GitHub Release para descarga directa.

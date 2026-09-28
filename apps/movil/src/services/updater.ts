@@ -4,7 +4,9 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import appConfig from '../../app.json';
 
 export const CURRENT_APP_VERSION = appConfig.expo.version || '0.0.1';
-export const UPDATE_ENDPOINT = 'https://pub-f4c1d44ce5464b5885fafbb9e5afe882.r2.dev/latest-mobile.json';
+export const UPDATE_ENDPOINT =
+  process.env.EXPO_PUBLIC_UPDATE_ENDPOINT ||
+  'https://pub-f4c1d44ce5464b5885fafbb9e5afe882.r2.dev/latest-app-monitor.json';
 
 export interface UpdateInfo {
   version: string;
@@ -71,15 +73,25 @@ export async function checkForUpdate(): Promise<CheckUpdateResult> {
     clearTimeout(timeoutId);
 
     if (!response.ok) {
+      // 404 es el estado esperado mientras no se haya publicado un release de APP-MONITOR en R2
       return {
         hasUpdate: false,
         currentVersion: CURRENT_APP_VERSION,
-        error: `Error ${response.status} al consultar actualización`,
       };
     }
 
     const data: UpdateInfo = await response.json();
     if (!data || !data.version || !data.url) {
+      return { hasUpdate: false, currentVersion: CURRENT_APP_VERSION };
+    }
+
+    // Seguridad: Ignorar manifiestos de otras aplicaciones alojadas en el mismo bucket R2
+    if (
+      data.apk_name &&
+      !data.apk_name.toUpperCase().includes('APP-MONITOR') &&
+      !data.apk_name.toUpperCase().includes('MONITOR')
+    ) {
+      console.log('Ignorando manifiesto de otra aplicación en R2:', data.apk_name);
       return { hasUpdate: false, currentVersion: CURRENT_APP_VERSION };
     }
 

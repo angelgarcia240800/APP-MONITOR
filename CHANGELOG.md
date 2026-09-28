@@ -36,8 +36,11 @@ Todas las modificaciones notables a este proyecto serán documentadas en este ar
   - Almacenamiento persistente sin conexión con `@react-native-async-storage/async-storage`.
 
 ### Pipeline de Despliegue CI/CD y Auto-Actualizaciones
+- **Segregación del Manifiesto en Cloudflare R2**:
+  - Se configuró el endpoint independiente `latest-app-monitor.json` para esta aplicación, evitando colisiones con los manifiestos de otras aplicaciones en el bucket R2 (como `APP-JU`).
+  - Validación de identidad del instalador: el actualizador comprueba explícitamente que el paquete pertenezca a `APP-MONITOR`.
 - **Workflow de GitHub Actions (`.github/workflows/build-mobile.yml`)**:
   - Compilación automática de APK con EAS Build local.
-  - Generación de manifiesto `latest-mobile.json` y subida a Cloudflare R2 con retención de 2 versiones.
+  - Generación de manifiesto `latest-app-monitor.json` y subida a Cloudflare R2 con retención de 2 versiones.
 - **Auto-Actualizador en la App (`updater.ts` & `UpdateModal.tsx`)**:
   - Consulta en segundo plano contra Cloudflare R2 con seguimiento de porcentaje de descarga e instalador nativo.
