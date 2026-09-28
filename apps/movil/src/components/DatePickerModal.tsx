@@ -25,6 +25,7 @@ import { formatVES } from '../services/ratesService';
 interface HistoricalRate {
   date: Date;
   dateStr: string;
+  isToday: boolean;
   bcvUsd: number;
   bcvEur: number;
   usdt: number;
@@ -94,24 +95,41 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
 
   // Calcula las tasas históricas estimadas / registradas para una fecha dada
   const getRatesForDate = (date: Date): HistoricalRate => {
-    // Diferencia en días respecto a hoy
-    const diffTime = today.getTime() - date.getTime();
-    const diffDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+    // Normalizar a medianoche (00:00:00) para un cálculo determinista y consistente de días
+    const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+    const targetMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 
-    // Si es fin de semana (Sábado = 6, Domingo = 0), toma la cotización del viernes anterior
-    const dayOfWeek = date.getDay();
-    let effectiveDiffDays = diffDays;
-    if (dayOfWeek === 6) effectiveDiffDays += 1;
-    if (dayOfWeek === 0) effectiveDiffDays += 2;
+    const diffDays = Math.max(0, Math.round((todayMidnight - targetMidnight) / (1000 * 60 * 60 * 24)));
+    const isToday = diffDays === 0;
 
-    // Progresión histórica aproximada diaria oficial de BCV (~0.12% - 0.2% por día hábil)
-    const factor = Math.max(0.75, 1 - (effectiveDiffDays * 0.0018));
+    let usd: number;
+    let eur: number;
+    let usdt: number;
+    let promedio: number;
+    let brecha: number;
 
-    const usd = parseFloat((currentBcvUsd * factor).toFixed(2));
-    const eur = parseFloat((currentBcvEur * factor).toFixed(2));
-    const usdt = parseFloat((currentUsdt * (factor * 1.002)).toFixed(2));
-    const promedio = parseFloat(((usd + usdt) / 2).toFixed(2));
-    const brecha = usd > 0 ? parseFloat((((usdt - usd) / usd) * 100).toFixed(2)) : 0;
+    if (isToday) {
+      usd = currentBcvUsd;
+      eur = currentBcvEur;
+      usdt = currentUsdt;
+      promedio = parseFloat(((usd + usdt) / 2).toFixed(2));
+      brecha = usd > 0 ? parseFloat((((usdt - usd) / usd) * 100).toFixed(2)) : 0;
+    } else {
+      // Si es fin de semana (Sábado = 6, Domingo = 0), toma la cotización del viernes anterior
+      const dayOfWeek = date.getDay();
+      let effectiveDiffDays = diffDays;
+      if (dayOfWeek === 6) effectiveDiffDays += 1;
+      if (dayOfWeek === 0) effectiveDiffDays += 2;
+
+      // Progresión histórica determinista fija hacia atrás
+      const factor = Math.max(0.75, 1 - (effectiveDiffDays * 0.0018));
+
+      usd = parseFloat((currentBcvUsd * factor).toFixed(2));
+      eur = parseFloat((currentBcvEur * factor).toFixed(2));
+      usdt = parseFloat((currentUsdt * (factor * 1.002)).toFixed(2));
+      promedio = parseFloat(((usd + usdt) / 2).toFixed(2));
+      brecha = usd > 0 ? parseFloat((((usdt - usd) / usd) * 100).toFixed(2)) : 0;
+    }
 
     const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     const diaLabel = dias[date.getDay()];
@@ -121,7 +139,8 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
 
     return {
       date,
-      dateStr: `${diaLabel}, ${diaNum}/${mesNum}/${anioShort}`,
+      dateStr: isToday ? 'Hoy' : `${diaLabel}, ${diaNum}/${mesNum}/${anioShort}`,
+      isToday,
       bcvUsd: usd,
       bcvEur: eur,
       usdt,
@@ -314,7 +333,7 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
             >
               <Check size={18} color={theme.buttonPrimaryText} style={{ marginRight: 8 }} />
               <Text style={[styles.applyButtonText, { color: theme.buttonPrimaryText }]}>
-                Cargar en Calculadora
+                {selectedRate.isToday ? 'Cargar Tasa de Hoy' : 'Cargar en Calculadora'}
               </Text>
             </TouchableOpacity>
           </ScrollView>

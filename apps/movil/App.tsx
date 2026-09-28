@@ -108,6 +108,7 @@ export default function App() {
   const theme: ThemeColors = isDark ? DARK_THEME : LIGHT_THEME;
 
   const [rates, setRates] = useState<RatesData>(INITIAL_RATES);
+  const [liveRates, setLiveRates] = useState<RatesData>(INITIAL_RATES);
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyType>('USD_BCV');
   const [customDateLabel, setCustomDateLabel] = useState<string | undefined>(undefined);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -141,6 +142,7 @@ export default function App() {
     const cached = await storageService.getRatesCache();
     if (cached) {
       setRates(cached);
+      setLiveRates(cached);
     }
 
     const lastCur = await storageService.getLastSelectedCurrency();
@@ -159,7 +161,9 @@ export default function App() {
     setIsRefreshing(true);
     try {
       const fresh = await fetchAllRates();
+      setLiveRates(fresh);
       setRates(fresh);
+      setCustomDateLabel(undefined);
       if (withToast) {
         setShowToast(true);
       }
@@ -224,6 +228,13 @@ export default function App() {
   };
 
   const handleApplyHistoricalRate = (hist: any) => {
+    if (hist.isToday) {
+      setCustomDateLabel(undefined);
+      setRates(liveRates);
+      setCurrentScreen('HOME');
+      return;
+    }
+
     setCustomDateLabel(hist.dateStr);
     setRates((prev) => ({
       ...prev,
@@ -351,9 +362,9 @@ export default function App() {
         <DatePickerModal
           visible={isDatePickerOpen}
           theme={theme}
-          currentBcvUsd={rates.bcvUsd.rate}
-          currentBcvEur={rates.bcvEur.rate}
-          currentUsdt={rates.usdt.rate}
+          currentBcvUsd={liveRates.bcvUsd.rate}
+          currentBcvEur={liveRates.bcvEur.rate}
+          currentUsdt={liveRates.usdt.rate}
           onClose={() => setIsDatePickerOpen(false)}
           onApplyHistoricalRate={handleApplyHistoricalRate}
         />
