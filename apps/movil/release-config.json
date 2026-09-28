@@ -1,4 +1,4 @@
 {
   "min_version": "0.0.1",
-  "notes": "Versión 0.0.1: Monitoreo en vivo de tasas BCV y Binance P2P USDT, recarga por deslizamiento, calculadora bidireccional, calendario histórico con iconos minimalistas y cálculo consistente, logos oficiales con flechas verdes y modos claro/oscuro/automático."
+  "notes": "Versión 0.0.2: Splash nativo y adaptive icon estandarizados en 1024x1024 (sin cuadrículas de Android), logo oficial con S y segmentos blancos, calendario histórico con iconos vectoriales minimalistas y cálculo determinista, y conexión al bucket dedicado app-monitor en Cloudflare R2."
 }

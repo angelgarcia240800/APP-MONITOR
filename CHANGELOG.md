@@ -2,6 +2,31 @@
 
 Todas las modificaciones notables a este proyecto serán documentadas en este archivo según el estándar [Semantic Versioning](https://semver.org/).
 
+## [0.0.2] - 2026-09-28
+
+### Experiencia Visual, Splash y Activos Nativos
+- **Corrección de Cuadrícula Nativa en Inicio (Android 12+ / MIUI / HyperOS)**:
+  - Creación y estandarización de `adaptive-icon.png` (1024×1024 px con zona segura del 66% y fondo transparente), evitando que el sistema operativo o el lanzador recurra a la plantilla geométrica de calibración por defecto durante el arranque en frío.
+  - Estandarización de `splash.png` (1024×1024 px centrado sobre fondo negro `#000000`), garantizando una transición nativa limpia y profesional hacia la aplicación sin deformaciones ni óvalos.
+  - Actualización de `app.json` vinculando `android.adaptiveIcon.foregroundImage` a `./assets/adaptive-icon.png`.
+- **Restauración de Relleno Blanco en Logotipos Oficiales**:
+  - Relleno blanco sólido (`#FFFFFF`) restaurado en la "S" y en los 3 arcos exteriores del isotipo en todos los formatos (`icon.png`, `adaptive-icon.png`, `splash.png`, `favicon.png` y `logo-dark.png`).
+  - Preservación íntegra de las flechas verdes (`#16A34A` / `#22C55E`) y del contenedor squircle `#303338`.
+
+### Calendario y Cotizaciones Históricas (`DatePickerModal.tsx`)
+- **Iconografía Minimalista Profesional**:
+  - Reemplazo total de emojis (⚖️, 💵, 💶, 🪙, 📈) por iconos vectoriales limpios de Lucide (`DollarSign`, `Euro`, `Coins`, `Scale`, `TrendingUp`).
+- **Cálculo Determinista sin Descuento Acumulativo**:
+  - Desacoplamiento de las tasas oficiales en vivo del día (`liveRates`) respecto a las tasas activas de la calculadora, resolviendo el error donde abrir repetidas veces el calendario descontaba progresivamente el precio.
+  - Normalización de comparaciones temporales a medianoche y botón para recargar la tasa oficial de Hoy.
+
+### Infraestructura, CI/CD y Auto-Actualizador
+- **Migración a Bucket Dedicado en Cloudflare R2**:
+  - Configuración y enlace con el nuevo bucket independiente `app-monitor` en el endpoint `https://pub-d26f08339769408fa600c88e7f8a97ce.r2.dev`.
+  - Aislamiento del manifiesto de actualización en `latest-app-monitor.json` con retención de las últimas 2 versiones del APK.
+- **Vinculación Oficial de EAS Build**:
+  - Asociación directa con el proyecto Expo de la cuenta `@rvcenter` (`ID: 9b3139b8-1c9e-4b54-83c8-82a9da2b2b92`).
+
 ## [0.0.1] - 2026-09-28 (Versión Inicial de Desarrollo y Pruebas — APP-MONITOR)
 
 ### Interfaz Móvil y Experiencia de Usuario (React Native / TypeScript)
