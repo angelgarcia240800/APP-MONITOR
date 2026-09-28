@@ -21,6 +21,7 @@ Todas las modificaciones notables a este proyecto serán documentadas en este ar
   - Notificación flotante animada que aparece durante 1 segundo exacto (`✓ Tasas actualizadas`).
 - **Calendario Interactivo y Cotizaciones Históricas (`DatePickerModal.tsx`)**:
   - Selector de fecha para consultar cotizaciones pasadas de Dólar BCV, Euro BCV, USDT y Promedio, con botón para cargar el valor en la calculadora.
+  - Diseño minimalista limpio: sustitución de emojis por iconos vectoriales profesionales de Lucide (`DollarSign`, `Euro`, `Coins`, `Scale` y `TrendingUp`).
 - **Correcciones de Layout en Inputs**:
   - Los campos numéricos de la calculadora principal (`HomeScreen`) permanecen 100% contenidos dentro de la tarjeta sin desbordarse hacia la derecha en web y móvil.
   - En `UsdtRatesScreen`, la etiqueta `USDT` permanece contenida dentro de la caja de cálculo rápido P2P.

@@ -7,7 +7,18 @@ import {
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
-import { Calendar, ChevronLeft, ChevronRight, X, Check, ArrowUp } from 'lucide-react-native';
+import {
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Check,
+  DollarSign,
+  Euro,
+  Coins,
+  Scale,
+  TrendingUp,
+} from 'lucide-react-native';
 import { ThemeColors } from '../constants/theme';
 import { formatVES } from '../services/ratesService';
 
@@ -241,35 +252,50 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
 
               <View style={styles.ratesTable}>
                 <View style={styles.rateRow}>
-                  <Text style={[styles.rateName, { color: theme.textSecondary }]}>💵 Dólar BCV:</Text>
+                  <View style={styles.rateLabelGroup}>
+                    <DollarSign size={15} color={theme.textSecondary} />
+                    <Text style={[styles.rateName, { color: theme.textSecondary }]}>Dólar BCV:</Text>
+                  </View>
                   <Text style={[styles.rateAmount, { color: theme.textPrimary }]}>
                     {formatVES(selectedRate.bcvUsd)} Bs
                   </Text>
                 </View>
 
                 <View style={styles.rateRow}>
-                  <Text style={[styles.rateName, { color: theme.textSecondary }]}>💶 Euro BCV:</Text>
+                  <View style={styles.rateLabelGroup}>
+                    <Euro size={15} color={theme.textSecondary} />
+                    <Text style={[styles.rateName, { color: theme.textSecondary }]}>Euro BCV:</Text>
+                  </View>
                   <Text style={[styles.rateAmount, { color: theme.textPrimary }]}>
                     {formatVES(selectedRate.bcvEur)} Bs
                   </Text>
                 </View>
 
                 <View style={styles.rateRow}>
-                  <Text style={[styles.rateName, { color: theme.textSecondary }]}>🪙 USDT P2P:</Text>
+                  <View style={styles.rateLabelGroup}>
+                    <Coins size={15} color={theme.textSecondary} />
+                    <Text style={[styles.rateName, { color: theme.textSecondary }]}>USDT P2P:</Text>
+                  </View>
                   <Text style={[styles.rateAmount, { color: theme.textPrimary }]}>
                     {formatVES(selectedRate.usdt)} Bs
                   </Text>
                 </View>
 
                 <View style={styles.rateRow}>
-                  <Text style={[styles.rateName, { color: theme.textSecondary }]}>⚖️ Promedio:</Text>
+                  <View style={styles.rateLabelGroup}>
+                    <Scale size={15} color={theme.textSecondary} />
+                    <Text style={[styles.rateName, { color: theme.textSecondary }]}>Promedio:</Text>
+                  </View>
                   <Text style={[styles.rateAmount, { color: theme.textPrimary }]}>
                     {formatVES(selectedRate.promedio)} Bs
                   </Text>
                 </View>
 
                 <View style={styles.rateRow}>
-                  <Text style={[styles.rateName, { color: theme.textSecondary }]}>📈 Brecha Cambiaria:</Text>
+                  <View style={styles.rateLabelGroup}>
+                    <TrendingUp size={15} color={theme.accentGreen} />
+                    <Text style={[styles.rateName, { color: theme.textSecondary }]}>Brecha Cambiaria:</Text>
+                  </View>
                   <Text style={[styles.rateAmount, { color: theme.accentGreen }]}>
                     +{selectedRate.brecha}%
                   </Text>
@@ -412,6 +438,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  rateLabelGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
   },
   rateName: {
     fontSize: 13,
