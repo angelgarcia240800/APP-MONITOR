@@ -1,12 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { RatesData, PaymentProfile, AppSettings } from '../types';
+import { RatesData, AppSettings } from '../types';
+import { ThemeMode } from '../constants/theme';
 
 const STORAGE_KEYS = {
   RATES_CACHE: '@app_monitor_rates_cache',
   CUSTOM_RATE: '@app_monitor_custom_rate',
-  PAYMENT_PROFILES: '@app_monitor_payment_profiles',
   SETTINGS: '@app_monitor_settings',
   LAST_CURRENCY: '@app_monitor_last_currency',
+  THEME_MODE: '@app_monitor_theme_mode',
 };
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -53,23 +54,6 @@ export const storageService = {
     }
   },
 
-  async getPaymentProfiles(): Promise<PaymentProfile[]> {
-    try {
-      const json = await AsyncStorage.getItem(STORAGE_KEYS.PAYMENT_PROFILES);
-      return json ? JSON.parse(json) : [];
-    } catch (e) {
-      return [];
-    }
-  },
-
-  async savePaymentProfiles(profiles: PaymentProfile[]): Promise<void> {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEYS.PAYMENT_PROFILES, JSON.stringify(profiles));
-    } catch (e) {
-      console.warn('Error al guardar perfiles de pago:', e);
-    }
-  },
-
   async getSettings(): Promise<AppSettings> {
     try {
       const json = await AsyncStorage.getItem(STORAGE_KEYS.SETTINGS);
@@ -100,6 +84,23 @@ export const storageService = {
       await AsyncStorage.setItem(STORAGE_KEYS.LAST_CURRENCY, id);
     } catch (e) {
       console.warn('Error al guardar última moneda:', e);
+    }
+  },
+
+  async getThemeMode(): Promise<ThemeMode> {
+    try {
+      const val = await AsyncStorage.getItem(STORAGE_KEYS.THEME_MODE);
+      return (val as ThemeMode) || 'system';
+    } catch (e) {
+      return 'system';
+    }
+  },
+
+  async saveThemeMode(mode: ThemeMode): Promise<void> {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.THEME_MODE, mode);
+    } catch (e) {
+      console.warn('Error al guardar modo de tema:', e);
     }
   },
 };

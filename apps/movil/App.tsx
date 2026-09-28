@@ -5,23 +5,26 @@ import {
   StatusBar,
   View,
   Alert,
+  useColorScheme,
 } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { BcvRatesScreen } from './src/screens/BcvRatesScreen';
 import { UsdtRatesScreen } from './src/screens/UsdtRatesScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
+import { SplashScreen } from './src/screens/SplashScreen';
 import { RatesModal } from './src/components/RatesModal';
 import { SideDrawer, DrawerScreenType } from './src/components/SideDrawer';
 import { UpdateModal } from './src/components/UpdateModal';
 import { CustomRateModal } from './src/components/CustomRateModal';
-import { PaymentProfilesModal } from './src/components/PaymentProfilesModal';
-import { ScannerModal } from './src/components/ScannerModal';
+import { DatePickerModal } from './src/components/DatePickerModal';
+import { FloatingToast } from './src/components/FloatingToast';
 import { InfoModal } from './src/components/InfoModal';
 import { RatesData, CurrencyType } from './src/types';
 import { fetchAllRates } from './src/services/ratesService';
 import { storageService } from './src/services/storageService';
 import { checkForUpdate, UpdateInfo } from './src/services/updater';
+import { DARK_THEME, LIGHT_THEME, ThemeMode, ThemeColors } from './src/constants/theme';
 
 const INITIAL_RATES: RatesData = {
   bcvUsd: {
@@ -92,17 +95,30 @@ const INITIAL_RATES: RatesData = {
 type ScreenType = 'HOME' | 'BCV_RATES' | 'USDT_RATES' | 'SETTINGS';
 
 export default function App() {
+  const systemColorScheme = useColorScheme();
+  const [themeMode, setThemeMode] = useState<ThemeMode>('system');
+  const [showSplash, setShowSplash] = useState(true);
+
+  // Determinar si el tema activo es oscuro
+  const isDark =
+    themeMode === 'system'
+      ? systemColorScheme === 'dark'
+      : themeMode === 'dark';
+
+  const theme: ThemeColors = isDark ? DARK_THEME : LIGHT_THEME;
+
   const [rates, setRates] = useState<RatesData>(INITIAL_RATES);
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyType>('USD_BCV');
+  const [customDateLabel, setCustomDateLabel] = useState<string | undefined>(undefined);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showToast, setShowToast] = useState(false);
   const [currentScreen, setCurrentScreen] = useState<ScreenType>('HOME');
 
-  // Modals state
+  // Modals
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isRatesModalOpen, setIsRatesModalOpen] = useState(false);
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [isCustomRateOpen, setIsCustomRateOpen] = useState(false);
-  const [isPaymentProfilesOpen, setIsPaymentProfilesOpen] = useState(false);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
 
   // Auto-updater state (Cloudflare R2)
@@ -110,13 +126,18 @@ export default function App() {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [isMandatoryUpdate, setIsMandatoryUpdate] = useState(false);
 
-  // Inicialización y carga de caché
   useEffect(() => {
     initApp();
   }, []);
 
   const initApp = async () => {
-    // 1. Cargar caché inmediata para arranque instantáneo
+    // 1. Cargar tema preferido
+    const savedTheme = await storageService.getThemeMode();
+    if (savedTheme) {
+      setThemeMode(savedTheme);
+    }
+
+    // 2. Cargar caché de tasas
     const cached = await storageService.getRatesCache();
     if (cached) {
       setRates(cached);
@@ -127,18 +148,21 @@ export default function App() {
       setSelectedCurrency(lastCur as CurrencyType);
     }
 
-    // 2. Sincronizar tasas en vivo (BCV USD, BCV EUR, Binance P2P USDT)
-    refreshRates();
+    // 3. Sincronizar tasas en vivo
+    refreshRates(false);
 
-    // 3. Comprobar actualizaciones automáticas en Cloudflare R2
+    // 4. Comprobar actualizaciones en Cloudflare R2
     checkUpdatesBackground(false);
   };
 
-  const refreshRates = useCallback(async () => {
+  const refreshRates = useCallback(async (withToast: boolean = true) => {
     setIsRefreshing(true);
     try {
       const fresh = await fetchAllRates();
       setRates(fresh);
+      if (withToast) {
+        setShowToast(true);
+      }
     } catch (e: any) {
       console.warn('Error al refrescar tasas:', e.message);
     } finally {
@@ -182,6 +206,11 @@ export default function App() {
     }));
   };
 
+  const handleThemeModeChange = async (mode: ThemeMode) => {
+    setThemeMode(mode);
+    await storageService.saveThemeMode(mode);
+  };
+
   const handleDrawerNavigate = (navScreen: DrawerScreenType) => {
     if (navScreen === 'CALCULATOR') {
       setCurrentScreen('HOME');
@@ -189,40 +218,93 @@ export default function App() {
       setCurrentScreen('BCV_RATES');
     } else if (navScreen === 'USDT_RATES') {
       setCurrentScreen('USDT_RATES');
-    } else if (navScreen === 'PAYMENT_PROFILES') {
-      setIsPaymentProfilesOpen(true);
     } else if (navScreen === 'SETTINGS') {
       setCurrentScreen('SETTINGS');
     }
   };
 
-  const handleScannedValue = (amountUsd: number) => {
-    // Al escanear, seleccionamos Dólar BCV y volvemos al home
+  const handleApplyHistoricalRate = (hist: any) => {
+    setCustomDateLabel(hist.dateStr);
+    setRates((prev) => ({
+      ...prev,
+      bcvUsd: {
+        ...prev.bcvUsd,
+        rate: hist.bcvUsd,
+        lastUpdated: hist.dateStr,
+      },
+      bcvEur: {
+        ...prev.bcvEur,
+        rate: hist.bcvEur,
+        lastUpdated: hist.dateStr,
+      },
+      usdt: {
+        ...prev.usdt,
+        rate: hist.usdt,
+        lastUpdated: hist.dateStr,
+      },
+      promedio: {
+        ...prev.promedio,
+        rate: hist.promedio,
+        lastUpdated: hist.dateStr,
+      },
+      brechaUsdtVsBcv: hist.brecha,
+    }));
     setCurrentScreen('HOME');
   };
 
+  if (showSplash) {
+    return (
+      <SafeAreaProvider>
+        <StatusBar
+          barStyle={isDark ? 'light-content' : 'dark-content'}
+          backgroundColor={theme.background}
+        />
+        <SplashScreen
+          theme={theme}
+          isDark={isDark}
+          onFinish={() => setShowSplash(false)}
+        />
+      </SafeAreaProvider>
+    );
+  }
+
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
+        <StatusBar
+          barStyle={isDark ? 'light-content' : 'dark-content'}
+          backgroundColor={theme.background}
+        />
+
+        {/* Mensaje Flotante Toast de 1 segundo al actualizar */}
+        <FloatingToast
+          visible={showToast}
+          message="✓ Tasas actualizadas"
+          theme={theme}
+          onHide={() => setShowToast(false)}
+        />
 
         {/* Pantallas */}
         {currentScreen === 'HOME' && (
           <HomeScreen
             rates={rates}
             selectedCurrency={selectedCurrency}
+            customDateLabel={customDateLabel}
+            theme={theme}
+            isDark={isDark}
             onSelectCurrency={handleSelectCurrency}
-            onRefresh={refreshRates}
+            onRefresh={() => refreshRates(true)}
             isRefreshing={isRefreshing}
             onOpenDrawer={() => setIsDrawerOpen(true)}
             onOpenRatesModal={() => setIsRatesModalOpen(true)}
-            onOpenScanner={() => setIsScannerOpen(true)}
+            onOpenDatePicker={() => setIsDatePickerOpen(true)}
           />
         )}
 
         {currentScreen === 'BCV_RATES' && (
           <BcvRatesScreen
             rates={rates}
+            theme={theme}
             onBack={() => setCurrentScreen('HOME')}
           />
         )}
@@ -230,25 +312,30 @@ export default function App() {
         {currentScreen === 'USDT_RATES' && (
           <UsdtRatesScreen
             rates={rates}
+            theme={theme}
             onBack={() => setCurrentScreen('HOME')}
           />
         )}
 
         {currentScreen === 'SETTINGS' && (
           <SettingsScreen
+            theme={theme}
+            themeMode={themeMode}
+            onThemeModeChange={handleThemeModeChange}
             onBack={() => setCurrentScreen('HOME')}
             onCheckUpdates={() => checkUpdatesBackground(true)}
           />
         )}
 
-        {/* Modal de Tasas (Monedas - Screenshot 3) */}
+        {/* Modal de Tasas (Monedas) */}
         <RatesModal
           visible={isRatesModalOpen}
+          theme={theme}
           onClose={() => setIsRatesModalOpen(false)}
           rates={rates}
           selectedCurrency={selectedCurrency}
           onSelectCurrency={handleSelectCurrency}
-          onRefresh={refreshRates}
+          onRefresh={() => refreshRates(true)}
           isRefreshing={isRefreshing}
           onOpenCustomRate={() => {
             setIsRatesModalOpen(false);
@@ -256,9 +343,22 @@ export default function App() {
           }}
         />
 
-        {/* Drawer Lateral (Menú - Screenshot 4) */}
+        {/* Modal de Calendario y Fechas Históricas */}
+        <DatePickerModal
+          visible={isDatePickerOpen}
+          theme={theme}
+          currentBcvUsd={rates.bcvUsd.rate}
+          currentBcvEur={rates.bcvEur.rate}
+          currentUsdt={rates.usdt.rate}
+          onClose={() => setIsDatePickerOpen(false)}
+          onApplyHistoricalRate={handleApplyHistoricalRate}
+        />
+
+        {/* Drawer Lateral */}
         <SideDrawer
           visible={isDrawerOpen}
+          theme={theme}
+          isDark={isDark}
           onClose={() => setIsDrawerOpen(false)}
           activeScreen={
             currentScreen === 'HOME'
@@ -290,21 +390,6 @@ export default function App() {
           onClose={() => setIsCustomRateOpen(false)}
         />
 
-        {/* Modal de Perfiles de Pago */}
-        <PaymentProfilesModal
-          visible={isPaymentProfilesOpen}
-          onClose={() => setIsPaymentProfilesOpen(false)}
-        />
-
-        {/* Modal de Escáner de Precios */}
-        <ScannerModal
-          visible={isScannerOpen}
-          rate={rates.bcvUsd.rate}
-          rateName="Dólar BCV"
-          onClose={() => setIsScannerOpen(false)}
-          onApplyScannedValue={handleScannedValue}
-        />
-
         {/* Modal de Información Institucional */}
         <InfoModal
           visible={isInfoOpen}
@@ -318,6 +403,5 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#000000',
   },
 });

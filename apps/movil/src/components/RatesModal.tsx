@@ -9,13 +9,14 @@ import {
   Share,
   ActivityIndicator,
 } from 'react-native';
-import { RefreshCw, ArrowUp, Share2, X, Edit3 } from 'lucide-react-native';
+import { RefreshCw, ArrowUp, Share2, Edit3 } from 'lucide-react-native';
 import { RatesData, CurrencyType } from '../types';
 import { formatVES } from '../services/ratesService';
-import { THEME } from '../constants/theme';
+import { ThemeColors } from '../constants/theme';
 
 interface RatesModalProps {
   visible: boolean;
+  theme: ThemeColors;
   onClose: () => void;
   rates: RatesData;
   selectedCurrency: CurrencyType;
@@ -27,6 +28,7 @@ interface RatesModalProps {
 
 export const RatesModal: React.FC<RatesModalProps> = ({
   visible,
+  theme,
   onClose,
   rates,
   selectedCurrency,
@@ -94,39 +96,42 @@ export const RatesModal: React.FC<RatesModalProps> = ({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.backdrop}>
-        <View style={styles.sheetContainer}>
-          {/* Manija superior para arrastre */}
-          <View style={styles.dragHandle} />
+        <View style={[styles.sheetContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <View style={[styles.dragHandle, { backgroundColor: theme.borderHighlight }]} />
 
           {/* Header del modal */}
           <View style={styles.header}>
             <View>
-              <Text style={styles.title}>Monedas</Text>
-              <Text style={styles.subtitle}>{rates.bcvUsd.lastUpdated}, 10:00 AM</Text>
+              <Text style={[styles.title, { color: theme.textPrimary }]}>Monedas</Text>
+              <Text style={[styles.subtitle, { color: theme.textMuted }]}>
+                {rates.bcvUsd.lastUpdated}, 10:00 AM
+              </Text>
             </View>
             <TouchableOpacity
-              style={styles.refreshButton}
+              style={[styles.refreshButton, { backgroundColor: theme.surfaceSubtle, borderColor: theme.border }]}
               onPress={onRefresh}
               disabled={isRefreshing}
               activeOpacity={0.7}
             >
               {isRefreshing ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+                <ActivityIndicator size="small" color={theme.textPrimary} />
               ) : (
-                <RefreshCw size={20} color="#FFFFFF" />
+                <RefreshCw size={20} color={theme.textPrimary} />
               )}
             </TouchableOpacity>
           </View>
 
           <ScrollView style={styles.scrollArea} showsVerticalScrollIndicator={false}>
             {/* Tarjeta de Brecha Cambiaria ($/USDT) */}
-            <View style={styles.brechaCard}>
+            <View style={[styles.brechaCard, { backgroundColor: theme.surfaceSubtle, borderColor: theme.border }]}>
               <View style={styles.brechaLeft}>
-                <Text style={styles.brechaLabel}>Brecha ($/USDT):</Text>
-                <Text style={styles.brechaValue}>{rates.brechaUsdtVsBcv.toFixed(2)}%</Text>
+                <Text style={[styles.brechaLabel, { color: theme.textSecondary }]}>Brecha ($/USDT):</Text>
+                <Text style={[styles.brechaValue, { color: theme.textPrimary }]}>
+                  {rates.brechaUsdtVsBcv.toFixed(2)}%
+                </Text>
               </View>
-              <View style={styles.brechaIconBadge}>
-                <ArrowUp size={20} color="#FFFFFF" strokeWidth={2.5} />
+              <View style={[styles.brechaIconBadge, { backgroundColor: theme.accentGreenSubtle }]}>
+                <ArrowUp size={20} color={theme.accentGreen} strokeWidth={2.5} />
               </View>
             </View>
 
@@ -139,7 +144,8 @@ export const RatesModal: React.FC<RatesModalProps> = ({
                     key={item.id}
                     style={[
                       styles.rateCard,
-                      isSelected && styles.rateCardSelected,
+                      { backgroundColor: theme.surfaceSubtle, borderColor: theme.border },
+                      isSelected && { backgroundColor: theme.buttonPrimaryBg, borderColor: theme.buttonPrimaryBg },
                     ]}
                     onPress={() => {
                       onSelectCurrency(item.id);
@@ -151,7 +157,8 @@ export const RatesModal: React.FC<RatesModalProps> = ({
                       <Text
                         style={[
                           styles.rateTitle,
-                          isSelected && styles.rateTitleSelected,
+                          { color: theme.textPrimary },
+                          isSelected && { color: theme.buttonPrimaryText },
                         ]}
                       >
                         {item.title}
@@ -160,7 +167,7 @@ export const RatesModal: React.FC<RatesModalProps> = ({
                         <Text
                           style={[
                             styles.inCalculatorLabel,
-                            isSelected && styles.inCalculatorLabelSelected,
+                            isSelected && { color: theme.buttonPrimaryText, opacity: 0.75 },
                           ]}
                         >
                           En calculadora
@@ -172,14 +179,15 @@ export const RatesModal: React.FC<RatesModalProps> = ({
                       <View style={styles.priceRow}>
                         <ArrowUp
                           size={14}
-                          color={isSelected ? '#000000' : '#FFFFFF'}
+                          color={isSelected ? theme.buttonPrimaryText : theme.accentGreen}
                           strokeWidth={2}
                           style={{ marginRight: 4 }}
                         />
                         <Text
                           style={[
                             styles.priceValue,
-                            isSelected && styles.priceValueSelected,
+                            { color: theme.textPrimary },
+                            isSelected && { color: theme.buttonPrimaryText },
                           ]}
                         >
                           {formatVES(item.rate)} Bs
@@ -191,11 +199,12 @@ export const RatesModal: React.FC<RatesModalProps> = ({
                           style={styles.editCustomButton}
                           onPress={onOpenCustomRate}
                         >
-                          <Edit3 size={13} color={isSelected ? '#000000' : '#888888'} />
+                          <Edit3 size={13} color={isSelected ? theme.buttonPrimaryText : theme.textMuted} />
                           <Text
                             style={[
                               styles.editCustomText,
-                              isSelected && { color: '#000000' },
+                              { color: theme.textMuted },
+                              isSelected && { color: theme.buttonPrimaryText },
                             ]}
                           >
                             Modificar
@@ -205,7 +214,8 @@ export const RatesModal: React.FC<RatesModalProps> = ({
                         <Text
                           style={[
                             styles.variationText,
-                            isSelected && styles.variationTextSelected,
+                            { color: theme.accentGreen },
+                            isSelected && { color: theme.buttonPrimaryText, opacity: 0.85 },
                           ]}
                         >
                           +{item.variationPct}% (+{formatVES(item.variationAmount || 0)} Bs)
@@ -221,20 +231,20 @@ export const RatesModal: React.FC<RatesModalProps> = ({
           {/* Botones de acción inferiores */}
           <View style={styles.footerRow}>
             <TouchableOpacity
-              style={styles.closeButton}
+              style={[styles.closeButton, { backgroundColor: theme.surfaceSubtle, borderColor: theme.border }]}
               onPress={onClose}
               activeOpacity={0.7}
             >
-              <Text style={styles.closeButtonText}>Cerrar</Text>
+              <Text style={[styles.closeButtonText, { color: theme.textPrimary }]}>Cerrar</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.shareButton}
+              style={[styles.shareButton, { backgroundColor: theme.buttonPrimaryBg }]}
               onPress={handleShare}
               activeOpacity={0.7}
             >
-              <Share2 size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-              <Text style={styles.shareButtonText}>Compartir</Text>
+              <Share2 size={18} color={theme.buttonPrimaryText} style={{ marginRight: 8 }} />
+              <Text style={[styles.shareButtonText, { color: theme.buttonPrimaryText }]}>Compartir</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -246,15 +256,13 @@ export const RatesModal: React.FC<RatesModalProps> = ({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: THEME.colors.modalBackdrop,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'flex-end',
   },
   sheetContainer: {
-    backgroundColor: '#161616',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     borderTopWidth: 1,
-    borderColor: '#2A2A2A',
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 28,
@@ -263,7 +271,6 @@ const styles = StyleSheet.create({
   dragHandle: {
     width: 44,
     height: 4,
-    backgroundColor: '#444444',
     borderRadius: 2,
     alignSelf: 'center',
     marginBottom: 16,
@@ -277,29 +284,24 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#FFFFFF',
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 13,
-    color: '#888888',
     marginTop: 2,
   },
   refreshButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#262626',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#383838',
   },
   scrollArea: {
     marginBottom: 16,
   },
   brechaCard: {
-    backgroundColor: '#222222',
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -308,7 +310,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: '#333333',
   },
   brechaLeft: {
     flexDirection: 'row',
@@ -316,12 +317,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   brechaLabel: {
-    color: '#CCCCCC',
     fontSize: 15,
     fontWeight: '500',
   },
   brechaValue: {
-    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '800',
   },
@@ -329,7 +328,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#333333',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -337,7 +335,6 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   rateCard: {
-    backgroundColor: '#222222',
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -345,11 +342,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#2F2F2F',
-  },
-  rateCardSelected: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#FFFFFF',
   },
   rateCardLeft: {
     justifyContent: 'center',
@@ -357,19 +349,11 @@ const styles = StyleSheet.create({
   rateTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  rateTitleSelected: {
-    color: '#000000',
   },
   inCalculatorLabel: {
     fontSize: 12,
-    color: '#888888',
     marginTop: 2,
     fontWeight: '500',
-  },
-  inCalculatorLabelSelected: {
-    color: '#444444',
   },
   rateCardRight: {
     alignItems: 'flex-end',
@@ -381,19 +365,11 @@ const styles = StyleSheet.create({
   priceValue: {
     fontSize: 17,
     fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  priceValueSelected: {
-    color: '#000000',
   },
   variationText: {
     fontSize: 12,
-    color: '#888888',
     marginTop: 2,
-    fontWeight: '500',
-  },
-  variationTextSelected: {
-    color: '#333333',
+    fontWeight: '600',
   },
   editCustomButton: {
     flexDirection: 'row',
@@ -403,7 +379,6 @@ const styles = StyleSheet.create({
   },
   editCustomText: {
     fontSize: 12,
-    color: '#888888',
     fontWeight: '500',
   },
   footerRow: {
@@ -415,14 +390,11 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 48,
     borderRadius: 14,
-    backgroundColor: '#242424',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#383838',
   },
   closeButtonText: {
-    color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '600',
   },
@@ -430,15 +402,11 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 48,
     borderRadius: 14,
-    backgroundColor: '#333333',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#4A4A4A',
   },
   shareButtonText: {
-    color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '600',
   },
