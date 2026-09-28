@@ -10,10 +10,7 @@ Todas las modificaciones notables a este proyecto serán documentadas en este ar
   - Al jalar hacia abajo la pantalla, se sincronizan las cotizaciones en vivo y se dispara la notificación flotante de confirmación.
 - **Logotipos Oficiales con Flechas Verdes y Soporte de Modo Claro / Oscuro**:
   - Incorporadas las imágenes originales de `C:\Proyectos\LOGOS` (`app-monito-oscuro.jfif` y `app-monito-claro.jfif`) como activos oficiales en `apps/movil/assets/`.
-  - Iconos oficiales y Splash Screen generados en los estándares oficiales de alta resolución:
-    - `icon.png`: **1024x1024 px** (estándar requerido por Google Play y Android Adaptive Icons).
-    - `favicon.png`: **192x192 px** (estándar para navegadores web).
-    - `splash.png`: **1242x2436 px** con logotipo centrado sobre fondo `#000000` con `resizeMode: "contain"` para arranque estático nativo.
+  - Corrección de transparencia en activos de logotipo: relleno blanco sólido (`#FFFFFF`) restaurado en la "S" y en los 3 segmentos exteriores del círculo para `icon.png`, `favicon.png`, `splash.png` y `logo-dark.png`, preservando las flechas verdes (`#16A34A` / `#22C55E`), el fondo squircle `#303338` y las transparencias exteriores de esquinas.
   - Creación del componente `AppLogo.tsx` que alterna dinámicamente según el tema seleccionado.
 - **Soporte Completo de 3 Modos de Apariencia**:
   - Modo Oscuro, Modo Claro y Automático (sincronizado con el sistema operativo del teléfono mediante `useColorScheme`).
