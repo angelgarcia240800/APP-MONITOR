@@ -1,0 +1,172 @@
+name: Release Mobile
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: false # Conservamos las SDKs de Android
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: 'apps/movil/package-lock.json'
+
+      - name: Setup Java (Android SDK requirement)
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Expo
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install JS dependencies
+        working-directory: apps/movil
+        run: npm install
+
+      - name: Inject Git Tag Version
+        run: |
+          node -e "const fs = require('fs'); const v = '${{ github.ref_name }}'.replace('v', ''); const appPath = 'apps/movil/app.json'; const app = JSON.parse(fs.readFileSync(appPath)); app.expo.version = v; fs.writeFileSync(appPath, JSON.stringify(app, null, 2)); const pkgPath = 'apps/movil/package.json'; const pkg = JSON.parse(fs.readFileSync(pkgPath)); pkg.version = v; fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));"
+
+      - name: Build APK
+        working-directory: apps/movil
+        # --local compila en los ejecutores de GitHub Actions
+        # --profile github produce un .apk instalable directamente
+        run: eas build --platform android --profile github --local --output ../../APP-MONITOR_${{ github.ref_name }}.apk
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL }}
+
+      - name: Generate latest-mobile.json and Prepare R2 Assets
+        shell: bash
+        run: |
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+          PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          APK_NAME="APP-MONITOR_${{ github.ref_name }}.apk"
+          R2_PUBLIC_URL="${{ secrets.R2_PUBLIC_URL || 'https://pub-f4c1d44ce5464b5885fafbb9e5afe882.r2.dev' }}"
+          URL="${R2_PUBLIC_URL}/${APK_NAME}"
+
+          mkdir -p mobile-release-r2
+
+          node -e "
+            const fs = require('fs');
+            let config = {};
+            try {
+              if (fs.existsSync('apps/movil/release-config.json')) {
+                config = JSON.parse(fs.readFileSync('apps/movil/release-config.json', 'utf8'));
+              }
+            } catch (e) {
+              console.warn('No se pudo leer apps/movil/release-config.json:', e.message);
+            }
+
+            let sizeBytes = 0;
+            let sizeMb = '0 MB';
+            try {
+              if (fs.existsSync('$APK_NAME')) {
+                const stats = fs.statSync('$APK_NAME');
+                sizeBytes = stats.size;
+                sizeMb = (sizeBytes / (1024 * 1024)).toFixed(2) + ' MB';
+              }
+            } catch (err) {
+              console.warn('No se pudo calcular peso del archivo:', err.message);
+            }
+
+            const payload = {
+              version: '$VERSION',
+              obligatoria: config.obligatoria === true,
+              notes: config.notes || 'Actualización de APP-MONITOR',
+              pub_date: '$PUB_DATE',
+              url: '$URL',
+              apk_name: '$APK_NAME',
+              size_bytes: sizeBytes,
+              size_mb: sizeMb,
+              size: sizeMb,
+              peso: sizeMb
+            };
+
+            if (config.min_version) {
+              payload.min_version = config.min_version;
+            }
+
+            fs.writeFileSync('mobile-release-r2/latest-mobile.json', JSON.stringify(payload, null, 2));
+            console.log('latest-mobile.json generado con éxito:\n', JSON.stringify(payload, null, 2));
+          "
+
+          cp $APK_NAME mobile-release-r2/
+          echo "latest-mobile.json y $APK_NAME preparados para R2."
+
+      - name: Upload to Cloudflare R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_BUCKET: ${{ secrets.R2_BUCKET_NAME || 'app-junreca-updates' }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT_URL || 'https://8533b2ac36880d7c059cad876434287d.r2.cloudflarestorage.com' }}
+        run: |
+          aws s3 cp mobile-release-r2/ s3://${R2_BUCKET}/ --recursive --endpoint-url ${R2_ENDPOINT}
+
+      - name: Clean Old Mobile Releases in Cloudflare R2 (Keep Latest 2)
+        continue-on-error: true
+        shell: bash
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_BUCKET: ${{ secrets.R2_BUCKET_NAME || 'app-junreca-updates' }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT_URL || 'https://8533b2ac36880d7c059cad876434287d.r2.cloudflarestorage.com' }}
+        run: |
+          echo "==== Listando APKs en Cloudflare R2 para limpieza ===="
+          ALL_APKS=$(aws s3 ls s3://${R2_BUCKET}/ --endpoint-url "$R2_ENDPOINT" | grep -o 'APP-MONITOR_v[^ ]*\.apk' | sort -V || true)
+          TOTAL=$(echo "$ALL_APKS" | grep -c 'APP-MONITOR_' || true)
+          echo "Total de APKs encontrados en R2: $TOTAL"
+
+          if [ "$TOTAL" -gt 2 ]; then
+            TO_DELETE_COUNT=$((TOTAL - 2))
+            OLD_APKS=$(echo "$ALL_APKS" | head -n "$TO_DELETE_COUNT")
+            echo "Conservando las 2 versiones más recientes."
+            echo "Eliminando $TO_DELETE_COUNT versión(es) obsoleta(s):"
+            echo "$OLD_APKS"
+
+            for apk in $OLD_APKS; do
+              if [ -n "$apk" ]; then
+                echo "Eliminando s3://${R2_BUCKET}/$apk..."
+                aws s3 rm "s3://${R2_BUCKET}/$apk" --endpoint-url "$R2_ENDPOINT" || true
+              fi
+            done
+          else
+            echo "Hay $TOTAL versión(es) en R2. No se requiere limpieza (se conservan hasta 2 versiones)."
+          fi
+
+      - name: Upload APK to GitHub Release
+        uses: softprops/action-gh-release@v1
+        if: success()
+        with:
+          files: |
+            APP-MONITOR_${{ github.ref_name }}.apk
+            mobile-release-r2/latest-mobile.json

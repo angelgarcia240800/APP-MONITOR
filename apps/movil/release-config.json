@@ -1,0 +1,4 @@
+{
+  "min_version": "1.0.0",
+  "notes": "Versión 1.0.0: Lanzamiento inicial de APP-MONITOR con tasas en tiempo real de BCV (Dólar, Euro), USDT Binance P2P, cálculo de brecha cambiaria y calculadora bidireccional en interfaz monocromática."
+}

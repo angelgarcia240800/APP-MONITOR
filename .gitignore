@@ -1,0 +1,27 @@
+# Node & React Native
+node_modules/
+dist/
+.expo/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp.*
+
+# Sub-projects
+apps/movil/node_modules/
+apps/movil/.expo/
+apps/movil/dist/
+
+# Builds & Releases
+*.apk
+*.aab
+mobile-release-r2/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
