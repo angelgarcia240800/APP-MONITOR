@@ -69,7 +69,7 @@ jobs:
           VERSION="${VERSION#v}"
           PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           APK_NAME="APP-MONITOR_${{ github.ref_name }}.apk"
-          R2_PUBLIC_URL="${{ secrets.R2_PUBLIC_URL || 'https://pub-f4c1d44ce5464b5885fafbb9e5afe882.r2.dev' }}"
+          R2_PUBLIC_URL="${{ secrets.R2_PUBLIC_URL || 'https://pub-d26f08339769408fa600c88e7f8a97ce.r2.dev' }}"
           URL="${R2_PUBLIC_URL}/${APK_NAME}"
 
           mkdir -p mobile-release-r2

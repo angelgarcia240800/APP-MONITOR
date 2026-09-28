@@ -6,7 +6,7 @@ import appConfig from '../../app.json';
 export const CURRENT_APP_VERSION = appConfig.expo.version || '0.0.1';
 export const UPDATE_ENDPOINT =
   process.env.EXPO_PUBLIC_UPDATE_ENDPOINT ||
-  'https://pub-f4c1d44ce5464b5885fafbb9e5afe882.r2.dev/latest-app-monitor.json';
+  'https://pub-d26f08339769408fa600c88e7f8a97ce.r2.dev/latest-app-monitor.json';
 
 export interface UpdateInfo {
   version: string;
