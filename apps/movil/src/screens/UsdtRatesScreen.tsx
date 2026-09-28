@@ -8,6 +8,7 @@ import {
   TextInput,
   Linking,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { ArrowLeft, ExternalLink, Coins, ArrowUp } from 'lucide-react-native';
 import { RatesData } from '../types';
@@ -18,9 +19,17 @@ interface UsdtRatesScreenProps {
   rates: RatesData;
   theme: ThemeColors;
   onBack: () => void;
+  onRefresh?: () => Promise<void>;
+  isRefreshing?: boolean;
 }
 
-export const UsdtRatesScreen: React.FC<UsdtRatesScreenProps> = ({ rates, theme, onBack }) => {
+export const UsdtRatesScreen: React.FC<UsdtRatesScreenProps> = ({
+  rates,
+  theme,
+  onBack,
+  onRefresh,
+  isRefreshing = false,
+}) => {
   const [usdtInput, setUsdtInput] = useState('10');
   const parsedUsdt = parseFloat(usdtInput) || 0;
   const totalVES = parsedUsdt * rates.usdt.rate;
@@ -30,6 +39,18 @@ export const UsdtRatesScreen: React.FC<UsdtRatesScreenProps> = ({ rates, theme, 
       style={[styles.container, { backgroundColor: theme.background }]}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
+      bounces={true}
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.accentGreen}
+            colors={[theme.accentGreen]}
+            progressBackgroundColor={theme.surface}
+          />
+        ) : undefined
+      }
     >
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>

@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Linking,
+  RefreshControl,
 } from 'react-native';
 import { ArrowLeft, ExternalLink, ShieldCheck } from 'lucide-react-native';
 import { RatesData } from '../types';
@@ -16,14 +17,34 @@ interface BcvRatesScreenProps {
   rates: RatesData;
   theme: ThemeColors;
   onBack: () => void;
+  onRefresh?: () => Promise<void>;
+  isRefreshing?: boolean;
 }
 
-export const BcvRatesScreen: React.FC<BcvRatesScreenProps> = ({ rates, theme, onBack }) => {
+export const BcvRatesScreen: React.FC<BcvRatesScreenProps> = ({
+  rates,
+  theme,
+  onBack,
+  onRefresh,
+  isRefreshing = false,
+}) => {
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: theme.background }]}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
+      bounces={true}
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.accentGreen}
+            colors={[theme.accentGreen]}
+            progressBackgroundColor={theme.surface}
+          />
+        ) : undefined
+      }
     >
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>

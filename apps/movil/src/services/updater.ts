@@ -3,7 +3,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
 import appConfig from '../../app.json';
 
-export const CURRENT_APP_VERSION = appConfig.expo.version || '1.0.0';
+export const CURRENT_APP_VERSION = appConfig.expo.version || '0.0.1';
 export const UPDATE_ENDPOINT = 'https://pub-f4c1d44ce5464b5885fafbb9e5afe882.r2.dev/latest-mobile.json';
 
 export interface UpdateInfo {

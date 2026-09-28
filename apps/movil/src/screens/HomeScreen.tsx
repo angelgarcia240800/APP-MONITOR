@@ -10,6 +10,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import {
   Menu,
@@ -140,8 +141,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     <ScrollView
       style={[styles.container, { backgroundColor: theme.background }]}
       contentContainerStyle={styles.contentContainer}
-      bounces={false}
+      bounces={true}
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefreshing}
+          onRefresh={onRefresh}
+          tintColor={theme.accentGreen}
+          colors={[theme.accentGreen]}
+          progressBackgroundColor={theme.surface}
+        />
+      }
     >
       {/* Barra Superior */}
       <View style={styles.topBar}>

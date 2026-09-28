@@ -306,6 +306,8 @@ export default function App() {
             rates={rates}
             theme={theme}
             onBack={() => setCurrentScreen('HOME')}
+            onRefresh={() => refreshRates(true)}
+            isRefreshing={isRefreshing}
           />
         )}
 
@@ -314,6 +316,8 @@ export default function App() {
             rates={rates}
             theme={theme}
             onBack={() => setCurrentScreen('HOME')}
+            onRefresh={() => refreshRates(true)}
+            isRefreshing={isRefreshing}
           />
         )}
 

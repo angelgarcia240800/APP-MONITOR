@@ -1,4 +1,4 @@
 {
-  "min_version": "1.0.0",
-  "notes": "Versión 1.1.0: Nuevos logos con flechas verdes, soporte completo para Modo Claro/Oscuro/Automático, pantalla de inicio SplashScreen, selector de fecha con cotizaciones históricas y mensaje flotante de actualización."
+  "min_version": "0.0.1",
+  "notes": "Versión 0.0.1 (Desarrollo y pruebas): Soporte para recarga por deslizamiento (pull to refresh), iconos estándar de alta resolución, logos con flechas verdes, modos claro/oscuro/automático y calendario con cotizaciones históricas."
 }
