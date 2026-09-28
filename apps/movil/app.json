@@ -40,6 +40,12 @@
           }
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "9b3139b8-1c9e-4b54-83c8-82a9da2b2b92"
+      }
+    },
+    "owner": "rvcenter"
   }
 }
