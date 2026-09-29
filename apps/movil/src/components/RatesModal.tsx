@@ -8,6 +8,7 @@ import {
   ScrollView,
   Share,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { RefreshCw, ArrowUp, Share2, Edit3 } from 'lucide-react-native';
 import { RatesData, CurrencyType } from '../types';
@@ -265,8 +266,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 28,
-    maxHeight: '85%',
+    paddingBottom: Platform.OS === 'ios' ? 38 : 46,
+    maxHeight: '88%',
   },
   dragHandle: {
     width: 44,
@@ -384,7 +385,8 @@ const styles = StyleSheet.create({
   footerRow: {
     flexDirection: 'row',
     gap: 12,
-    marginTop: 4,
+    marginTop: 14,
+    marginBottom: 4,
   },
   closeButton: {
     flex: 1,

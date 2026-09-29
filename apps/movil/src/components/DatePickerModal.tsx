@@ -6,6 +6,7 @@ import {
   Modal,
   TouchableOpacity,
   ScrollView,
+  Platform,
 } from 'react-native';
 import {
   Calendar,
@@ -354,8 +355,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
     paddingHorizontal: 20,
     paddingTop: 18,
-    paddingBottom: 28,
-    maxHeight: '90%',
+    paddingBottom: Platform.OS === 'ios' ? 38 : 46,
+    maxHeight: '92%',
     borderTopWidth: 1,
   },
   header: {

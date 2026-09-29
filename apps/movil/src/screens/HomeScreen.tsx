@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
   contentContainer: {
     paddingHorizontal: 20,
     paddingTop: 50,
-    paddingBottom: 28,
+    paddingBottom: 50,
   },
   topBar: {
     flexDirection: 'row',

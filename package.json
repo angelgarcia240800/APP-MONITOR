@@ -6,6 +6,7 @@
     "start": "npm --prefix apps/movil start",
     "android": "npm --prefix apps/movil run android",
     "ios": "npm --prefix apps/movil run ios",
-    "web": "npm --prefix apps/movil run web"
+    "web": "npm --prefix apps/movil run web",
+    "build": "echo 'Static landing ready'"
   }
 }
