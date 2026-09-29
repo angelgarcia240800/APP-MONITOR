@@ -24,6 +24,7 @@ import {
   MoreVertical,
   TrendingUp,
   RotateCcw,
+  BarChart2,
 } from 'lucide-react-native';
 import { AppLogo } from '../components/AppLogo';
 import { RatesData, CurrencyType, RateItem } from '../types';
@@ -93,8 +94,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   }, [activeRate.rate, selectedCurrency]);
 
   const handleForeignChange = (text: string) => {
-    setForeignAmount(text);
-    const clean = text.replace(',', '.');
+    // Permitir solo dígitos, punto y coma como separador decimal
+    // Normalizar: reemplazar punto por coma si el usuario escribe punto
+    let normalized = text.replace(/[^0-9.,]/g, '');
+    // Solo un separador decimal permitido
+    const firstSep = normalized.search(/[.,]/);
+    if (firstSep !== -1) {
+      const before = normalized.slice(0, firstSep + 1).replace(/[.,]/g, ',');
+      const after = normalized.slice(firstSep + 1).replace(/[.,]/g, '');
+      normalized = before + after;
+    }
+    setForeignAmount(normalized);
+    const clean = normalized.replace(',', '.');
     const fVal = parseFloat(clean);
     if (!isNaN(fVal)) {
       const calcVes = fVal * activeRate.rate;
@@ -318,7 +329,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <TrendingUp size={18} color={theme.textMuted} />
         </View>
 
-        {/* Botones de Reiniciar y Compartir cálculo */}
+        {/* Botones de Reiniciar y Comparar */}
         {isCustomCalculation && (
           <View style={[styles.calcActionsRow, { borderTopColor: theme.border }]}>
             <TouchableOpacity
@@ -337,12 +348,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
             <TouchableOpacity
               style={[styles.calcShareButton, { backgroundColor: theme.accentGreen }]}
-              onPress={handleShareCalculation}
+              onPress={onOpenRatesModal}
               activeOpacity={0.8}
             >
-              <Share2 size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <BarChart2 size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
               <Text style={[styles.calcActionText, { color: '#FFFFFF', fontWeight: '700' }]}>
-                Compartir
+                Comparar
               </Text>
             </TouchableOpacity>
           </View>

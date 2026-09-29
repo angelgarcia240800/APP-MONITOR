@@ -96,6 +96,7 @@ export const RatesModal: React.FC<RatesModalProps> = ({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      {/* Backdrop bloqueado — no cierra al tocar fuera */}
       <View style={styles.backdrop}>
         <View style={[styles.sheetContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <View style={[styles.dragHandle, { backgroundColor: theme.borderHighlight }]} />
@@ -229,7 +230,7 @@ export const RatesModal: React.FC<RatesModalProps> = ({
             </View>
           </ScrollView>
 
-          {/* Botones de acción inferiores */}
+          {/* Botón de cierre */}
           <View style={styles.footerRow}>
             <TouchableOpacity
               style={[styles.closeButton, { backgroundColor: theme.surfaceSubtle, borderColor: theme.border }]}
@@ -237,15 +238,6 @@ export const RatesModal: React.FC<RatesModalProps> = ({
               activeOpacity={0.7}
             >
               <Text style={[styles.closeButtonText, { color: theme.textPrimary }]}>Cerrar</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.shareButton, { backgroundColor: theme.buttonPrimaryBg }]}
-              onPress={handleShare}
-              activeOpacity={0.7}
-            >
-              <Share2 size={18} color={theme.buttonPrimaryText} style={{ marginRight: 8 }} />
-              <Text style={[styles.shareButtonText, { color: theme.buttonPrimaryText }]}>Compartir</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -390,7 +382,7 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     flex: 1,
-    height: 48,
+    height: 52,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
