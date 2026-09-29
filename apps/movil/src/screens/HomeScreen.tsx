@@ -130,7 +130,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         `🪙 USDT Binance P2P: ${formatVES(rates.usdt.rate)} Bs\n` +
         `📈 Brecha Cambiaria: ${rates.brechaUsdtVsBcv}%\n` +
         `📅 Fecha: ${customDateLabel || activeRate.lastUpdated}\n\n` +
-        `Descarga APP-MONITOR: https://github.com/angelgarcia240800/APP-MONITOR`;
+        `Descarga APP-MONITOR: https://app.rvproyecto.xyz`;
 
       await Share.share({ message: msg });
     } catch (e) {
@@ -151,7 +151,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         `📌 Tasa ${activeRate.title}: ${formatVES(activeRate.rate)} Bs\n` +
         `📅 Fecha: ${customDateLabel || activeRate.lastUpdated}\n\n` +
         `📲 Monitorea cotizaciones en vivo con APP-MONITOR:\n` +
-        `https://rvproyecto.xyz`;
+        `https://app.rvproyecto.xyz`;
 
       await Share.share({ message: msg });
     } catch (e) {
