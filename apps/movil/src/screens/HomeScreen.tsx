@@ -23,6 +23,7 @@ import {
   ArrowUp,
   MoreVertical,
   TrendingUp,
+  RotateCcw,
 } from 'lucide-react-native';
 import { AppLogo } from '../components/AppLogo';
 import { RatesData, CurrencyType, RateItem } from '../types';
@@ -136,6 +137,33 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       console.warn('Error al compartir:', e);
     }
   };
+
+  const handleResetCalculator = () => {
+    setForeignAmount('1.00');
+    setVesAmount(formatVES(activeRate.rate));
+  };
+
+  const handleShareCalculation = async () => {
+    try {
+      const msg =
+        `📊 CÁLCULO APP-MONITOR\n` +
+        `💵 ${foreignAmount} ${activeRate.symbol} = ${vesAmount} Bs\n` +
+        `📌 Tasa ${activeRate.title}: ${formatVES(activeRate.rate)} Bs\n` +
+        `📅 Fecha: ${customDateLabel || activeRate.lastUpdated}\n\n` +
+        `📲 Monitorea cotizaciones en vivo con APP-MONITOR:\n` +
+        `https://rvproyecto.xyz`;
+
+      await Share.share({ message: msg });
+    } catch (e) {
+      console.warn('Error al compartir cálculo:', e);
+    }
+  };
+
+  const isCustomCalculation =
+    foreignAmount.trim() !== '' &&
+    foreignAmount !== '1.00' &&
+    foreignAmount !== '1' &&
+    foreignAmount !== '0';
 
   return (
     <ScrollView
@@ -289,6 +317,36 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </View>
           <TrendingUp size={18} color={theme.textMuted} />
         </View>
+
+        {/* Botones de Reiniciar y Compartir cálculo */}
+        {isCustomCalculation && (
+          <View style={[styles.calcActionsRow, { borderTopColor: theme.border }]}>
+            <TouchableOpacity
+              style={[
+                styles.calcResetButton,
+                { backgroundColor: theme.surfaceSubtle, borderColor: theme.border },
+              ]}
+              onPress={handleResetCalculator}
+              activeOpacity={0.7}
+            >
+              <RotateCcw size={15} color={theme.textPrimary} style={{ marginRight: 6 }} />
+              <Text style={[styles.calcActionText, { color: theme.textPrimary }]}>
+                Reiniciar
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.calcShareButton, { backgroundColor: theme.accentGreen }]}
+              onPress={handleShareCalculation}
+              activeOpacity={0.8}
+            >
+              <Share2 size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={[styles.calcActionText, { color: '#FFFFFF', fontWeight: '700' }]}>
+                Compartir
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {/* Selector de Fecha Interactivo (Abre DatePickerModal) */}
@@ -448,6 +506,34 @@ const styles = StyleSheet.create({
   variationText: {
     fontSize: 14,
     fontWeight: '700',
+  },
+  calcActionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+    paddingTop: 14,
+    borderTopWidth: 1,
+  },
+  calcResetButton: {
+    flex: 1,
+    height: 42,
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calcShareButton: {
+    flex: 1,
+    height: 42,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calcActionText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   dateRow: {
     flexDirection: 'row',

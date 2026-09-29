@@ -2,6 +2,21 @@
 
 Todas las modificaciones notables a este proyecto serán documentadas en este archivo según el estándar [Semantic Versioning](https://semver.org/).
 
+## [0.0.3] - 2026-09-29
+
+### Calculadora Interactiva y Experiencia de Usuario
+- **Botones Contextuales de Reiniciar y Compartir**:
+  - Al ingresar cualquier monto en la calculadora (divisa extranjera o Bolívares), aparece dinámicamente una barra con dos acciones principales:
+    - **Reiniciar**: restablece instantáneamente el valor a 1.00 y recalcula el monto en Bolívares a la tasa activa.
+    - **Compartir**: permite compartir vía WhatsApp, Telegram, correo o cualquier app el cálculo detallado con fecha, tasa oficial aplicada y enlace de descarga.
+
+### Splash Screen Nativo Android 12+ (MIUI / HyperOS)
+- **Integración del Plugin Oficial `expo-splash-screen`**:
+  - Se instaló la dependencia nativa `expo-splash-screen` (`^57.0.9`) y se configuró como plugin en `app.json` con `imageWidth: 200` y modo oscuro/claro forzado a fondo negro `#000000`.
+  - Esto genera explícitamente las directivas nativas `windowSplashScreenAnimatedIcon` y `windowSplashScreenBackground` en `styles.xml`, erradicando definitivamente el fallback del sistema de Android que mostraba la cuadrícula y óvalos de calibración por defecto.
+- **Incremento de `versionCode`**:
+  - Se asignó explícitamente `"versionCode": 3` en la configuración de Android (`app.json`) para obligar al sistema operativo y a los lanzadores de Xiaomi/MIUI a invalidar su caché interna de splash drawables.
+
 ## [0.0.2] - 2026-09-28
 
 ### Experiencia Visual, Splash y Activos Nativos

@@ -1,4 +1,4 @@
 {
   "min_version": "0.0.1",
-  "notes": "Versión 0.0.2: Splash nativo y adaptive icon estandarizados en 1024x1024 (sin cuadrículas de Android), logo oficial con S y segmentos blancos, calendario histórico con iconos vectoriales minimalistas y cálculo determinista, y conexión al bucket dedicado app-monitor en Cloudflare R2."
+  "notes": "Versión 0.0.3: Botones contextuales de Reiniciar y Compartir en la calculadora, integración del plugin nativo expo-splash-screen para erradicar definitivamente la cuadrícula de inicio en Android 12+/MIUI, e incremento de versionCode."
 }
