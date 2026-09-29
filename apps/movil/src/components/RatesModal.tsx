@@ -230,7 +230,7 @@ export const RatesModal: React.FC<RatesModalProps> = ({
             </View>
           </ScrollView>
 
-          {/* Botón de cierre */}
+          {/* Botones de acción inferiores */}
           <View style={styles.footerRow}>
             <TouchableOpacity
               style={[styles.closeButton, { backgroundColor: theme.surfaceSubtle, borderColor: theme.border }]}
@@ -238,6 +238,15 @@ export const RatesModal: React.FC<RatesModalProps> = ({
               activeOpacity={0.7}
             >
               <Text style={[styles.closeButtonText, { color: theme.textPrimary }]}>Cerrar</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.shareButton, { backgroundColor: theme.buttonPrimaryBg }]}
+              onPress={handleShare}
+              activeOpacity={0.7}
+            >
+              <Share2 size={18} color={theme.buttonPrimaryText} style={{ marginRight: 8 }} />
+              <Text style={[styles.shareButtonText, { color: theme.buttonPrimaryText }]}>Compartir</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -382,7 +391,7 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     flex: 1,
-    height: 52,
+    height: 48,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
