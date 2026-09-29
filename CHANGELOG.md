@@ -8,7 +8,13 @@ Todas las modificaciones notables a este proyecto serán documentadas en este ar
 - **Botones Contextuales de Reiniciar y Compartir**:
   - Al ingresar cualquier monto en la calculadora (divisa extranjera o Bolívares), aparece dinámicamente una barra con dos acciones principales:
     - **Reiniciar**: restablece instantáneamente el valor a 1.00 y recalcula el monto en Bolívares a la tasa activa.
-    - **Compartir**: permite compartir vía WhatsApp, Telegram, correo o cualquier app el cálculo detallado con fecha, tasa oficial aplicada y enlace de descarga.
+    - **Compartir**: permite compartir vía WhatsApp, Telegram, correo o cualquier app el cálculo detallado con fecha, tasa oficial aplicada y enlace hacia la web oficial `https://app.rvproyecto.xyz`.
+
+### Ergonomía y Márgenes de Navegación Móvil
+- **Ajuste de Padding Inferior en Modales (`RatesModal.tsx` y `DatePickerModal.tsx`)**:
+  - Se incrementó el espaciado inferior (`paddingBottom: 46` en Android y `38` en iOS) en el contenedor principal de los modales desplegables (Bottom Sheets).
+  - Reajuste de márgenes en la fila de acciones (`footerRow` con `marginTop: 14` y `marginBottom: 4`), asegurando que los botones "Cerrar" y "Compartir" nunca queden solapados ni ocultos detrás de la barra de navegación física o de gestos en dispositivos Android y Xiaomi/MIUI.
+  - Aumento de relleno inferior a `50px` en el scroll principal de `HomeScreen.tsx`.
 
 ### Splash Screen Nativo Android 12+ (MIUI / HyperOS)
 - **Integración del Plugin Oficial `expo-splash-screen`**:
@@ -16,6 +22,15 @@ Todas las modificaciones notables a este proyecto serán documentadas en este ar
   - Esto genera explícitamente las directivas nativas `windowSplashScreenAnimatedIcon` y `windowSplashScreenBackground` en `styles.xml`, erradicando definitivamente el fallback del sistema de Android que mostraba la cuadrícula y óvalos de calibración por defecto.
 - **Incremento de `versionCode`**:
   - Se asignó explícitamente `"versionCode": 3` en la configuración de Android (`app.json`) para obligar al sistema operativo y a los lanzadores de Xiaomi/MIUI a invalidar su caché interna de splash drawables.
+
+### Sitio Web Oficial y Despliegue en GitHub Pages (`app.rvproyecto.xyz`)
+- **Landing Page Minimalista de Descarga (`apps/landing/index.html`)**:
+  - Estructuración en 3 tarjetas esenciales con diseño limpio, moderno y oscuro.
+  - Sustitución de emojis por iconos vectoriales minimalistas en SVG puro.
+  - Integración del logotipo oficial PNG (`logo.png`) en el encabezado.
+- **Automatización de Despliegue CI/CD (`.github/workflows/deploy-pages.yml`)**:
+  - Workflow automatizado que compila y publica la carpeta `apps/landing` directamente en GitHub Pages en cada push a la rama `main`.
+  - Configuración del archivo `CNAME` apuntando al subdominio `app.rvproyecto.xyz` con enlace directo de descarga hacia el bucket de Cloudflare R2.
 
 ## [0.0.2] - 2026-09-28
 
