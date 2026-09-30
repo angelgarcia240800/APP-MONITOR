@@ -187,15 +187,8 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 70 || gestureState.vy > 0.5) {
-          Animated.timing(translateY, {
-            toValue: 600,
-            duration: 180,
-            useNativeDriver: true,
-          }).start(() => {
-            onClose();
-            translateY.setValue(0);
-          });
+        if (gestureState.dy > 60 || gestureState.vy > 0.4) {
+          onClose();
         } else {
           Animated.spring(translateY, {
             toValue: 0,

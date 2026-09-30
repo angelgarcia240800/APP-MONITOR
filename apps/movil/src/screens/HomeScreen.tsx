@@ -71,6 +71,19 @@ function numberToDigits(n: number): string {
   return cents > 0 ? String(cents) : '';
 }
 
+function getAddedDigit(incomingText: string, prevDisplay: string): string {
+  if (!incomingText) return '';
+  for (let i = 0; i < incomingText.length; i++) {
+    if (i >= prevDisplay.length || incomingText[i] !== prevDisplay[i]) {
+      if (/^[0-9]$/.test(incomingText[i])) {
+        return incomingText[i];
+      }
+    }
+  }
+  const digits = incomingText.replace(/[^0-9]/g, '');
+  return digits.length > 0 ? digits[digits.length - 1] : '';
+}
+
 // Procesa la entrada de texto comparándola con el valor previo formateado
 function handleATMChange(incomingText: string, prevDisplay: string, prevRaw: string): string {
   if (!incomingText) return '';
@@ -136,9 +149,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [foreignFocused, setForeignFocused] = useState(false);
   const [vesFocused, setVesFocused] = useState(false);
 
-  // Flags para limpiar a 0,00 solo la primera vez que se toca cada campo
-  const [foreignCleared, setForeignCleared] = useState(false);
-  const [vesCleared, setVesCleared] = useState(false);
+  // Controlan si al teclear el primer dígito se inicia un número nuevo (ej. 5 -> 0,05)
+  const [foreignFresh, setForeignFresh] = useState(true);
+  const [vesFresh, setVesFresh] = useState(true);
 
   // Ancla de cálculo: 'foreign' o 'ves'
   const [lastEdited, setLastEdited] = useState<'foreign' | 'ves'>('foreign');
@@ -176,29 +189,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const foreignDisplay = formatATM(foreignDigits);
   const vesDisplay = formatATM(vesDigits);
 
-  // ── Manejadores de foco con auto-clear primera vez ──
+  // ── Manejadores de foco: solo iluminan la línea inferior en verde, NUNCA ponen en 0 ──
   const handleForeignFocus = () => {
     setForeignFocused(true);
-    if (!foreignCleared) {
-      // Primera vez: limpiar a 0,00 e iniciar edición
-      setForeignDigits('');
-      setVesDigits('');
-      setForeignCleared(true);
-      setHasUserEdited(true);
-      setLastEdited('foreign');
-    }
   };
 
   const handleVesFocus = () => {
     setVesFocused(true);
-    if (!vesCleared) {
-      // Primera vez: limpiar a 0,00 e iniciar edición
-      setVesDigits('');
-      setForeignDigits('');
-      setVesCleared(true);
-      setHasUserEdited(true);
-      setLastEdited('ves');
-    }
   };
 
   // ── Manejadores de escritura en tiempo real (ATM) ──
@@ -206,9 +203,23 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     setLastEdited('foreign');
     setHasUserEdited(true);
 
-    const nextRaw = handleATMChange(text, foreignDisplay, foreignDigits);
-    setForeignDigits(nextRaw);
+    let nextRaw = '';
+    if (foreignFresh) {
+      const digit = getAddedDigit(text, foreignDisplay);
+      if (digit) {
+        nextRaw = digit;
+        setForeignFresh(false);
+      } else if (text.length < foreignDisplay.length) {
+        nextRaw = '';
+        setForeignFresh(false);
+      } else {
+        nextRaw = foreignDigits;
+      }
+    } else {
+      nextRaw = handleATMChange(text, foreignDisplay, foreignDigits);
+    }
 
+    setForeignDigits(nextRaw);
     const fNum = digitsToNumber(nextRaw);
     const vNum = fNum * activeRate.rate;
     setVesDigits(numberToDigits(vNum));
@@ -218,9 +229,23 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     setLastEdited('ves');
     setHasUserEdited(true);
 
-    const nextRaw = handleATMChange(text, vesDisplay, vesDigits);
-    setVesDigits(nextRaw);
+    let nextRaw = '';
+    if (vesFresh) {
+      const digit = getAddedDigit(text, vesDisplay);
+      if (digit) {
+        nextRaw = digit;
+        setVesFresh(false);
+      } else if (text.length < vesDisplay.length) {
+        nextRaw = '';
+        setVesFresh(false);
+      } else {
+        nextRaw = vesDigits;
+      }
+    } else {
+      nextRaw = handleATMChange(text, vesDisplay, vesDigits);
+    }
 
+    setVesDigits(nextRaw);
     const vNum = digitsToNumber(nextRaw);
     const fNum = activeRate.rate > 0 ? vNum / activeRate.rate : 0;
     setForeignDigits(numberToDigits(fNum));
@@ -234,9 +259,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     setForeignDigits(initialForeign);
     setVesDigits(initialVes);
 
-    // Permite que la próxima vez que toque vuelva a ponerse en 0
-    setForeignCleared(false);
-    setVesCleared(false);
+    // Permite que la próxima vez que se teclee un número inicie nuevo cálculo
+    setForeignFresh(true);
+    setVesFresh(true);
 
     setLastEdited('foreign');
     setHasUserEdited(false);
