@@ -107,23 +107,27 @@ export const RatesModal: React.FC<RatesModalProps> = ({
     });
   };
 
-  // Gesto de arrastrar hacia abajo para cerrar el modal
+  // Gesto de arrastrar hacia abajo para cerrar el modal (compatible con Android/Expo Go y Web)
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        return gestureState.dy > 6 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+        return gestureState.dy > 5 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+      },
+      onMoveShouldSetPanResponderCapture: (_, gestureState) => {
+        return gestureState.dy > 5 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
       },
       onPanResponderMove: (_, gestureState) => {
         if (gestureState.dy > 0) {
           translateY.setValue(gestureState.dy);
           // La sombra se desvanece gradualmente con el arrastre
-          const opacity = Math.max(0, 1 - gestureState.dy / 280);
+          const opacity = Math.max(0, 1 - gestureState.dy / 250);
           fadeAnim.setValue(opacity);
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 60 || gestureState.vy > 0.4) {
+        if (gestureState.dy > 50 || gestureState.vy > 0.3) {
           handleClose();
         } else {
           Animated.parallel([
@@ -208,10 +212,12 @@ export const RatesModal: React.FC<RatesModalProps> = ({
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={handleClose}>
       <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
-        {/* Tocar fuera (backdrop oscuro) cierra el modal */}
-        <TouchableWithoutFeedback onPress={handleClose}>
-          <View style={StyleSheet.absoluteFill} />
-        </TouchableWithoutFeedback>
+        {/* Área superior vacía para cerrar al tocar fuera */}
+        <TouchableOpacity
+          style={styles.backdropTouchArea}
+          activeOpacity={1}
+          onPress={handleClose}
+        />
 
         {/* Contenedor del Bottom Sheet animado */}
         <Animated.View
@@ -423,6 +429,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'flex-end',
   },
+  backdropTouchArea: {
+    flex: 1,
+    width: '100%',
+  },
   sheetContainer: {
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
@@ -430,17 +440,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: Platform.OS === 'ios' ? 38 : 46,
     maxHeight: '88%',
+    zIndex: 10,
+    elevation: 10,
   },
   dragZone: {
     paddingTop: 12,
-    paddingBottom: 4,
+    paddingBottom: 6,
   },
   dragHandle: {
-    width: 48,
-    height: 5,
+    width: 52,
+    height: 6,
     borderRadius: 3,
     alignSelf: 'center',
-    marginBottom: 14,
+    marginBottom: 12,
   },
   header: {
     flexDirection: 'row',

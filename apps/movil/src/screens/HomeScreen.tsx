@@ -165,21 +165,32 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [cardY, setCardY] = useState(240);
   const [isInputFocused, setIsInputFocused] = useState(false);
 
-  // Escuchar cuando el teclado se oculta para regresar el scroll a su posición original
+  // Escuchar cuando el teclado se abre para deslizar suavemente la tarjeta al margen superior
   useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', () => {
+      setIsInputFocused(true);
+      setTimeout(() => {
+        scrollViewRef.current?.scrollTo({ y: Math.max(0, cardY - 10), animated: true });
+      }, 50);
+    });
+
     const hideSub = Keyboard.addListener('keyboardDidHide', () => {
       setIsInputFocused(false);
       setForeignFocused(false);
       setVesFocused(false);
       scrollViewRef.current?.scrollTo({ y: 0, animated: true });
     });
-    return () => hideSub.remove();
-  }, []);
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [cardY]);
 
   const scrollToCardTop = () => {
     setIsInputFocused(true);
     setTimeout(() => {
-      scrollViewRef.current?.scrollTo({ y: Math.max(0, cardY - 15), animated: true });
+      scrollViewRef.current?.scrollTo({ y: Math.max(0, cardY - 10), animated: true });
     }, 100);
   };
 
@@ -418,10 +429,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </View>
 
           <View style={styles.inputFlexContainer}>
+            {/* Texto visible: muestra siempre el valor formateado sin saltos de cursor */}
+            <Text
+              style={[
+                styles.displayAmountText,
+                { color: foreignFocused ? theme.accentGreen : theme.textPrimary },
+              ]}
+              numberOfLines={1}
+            >
+              {foreignDisplay}
+            </Text>
+
+            {/* TextInput transparente que captura toques y teclas sin parpadeo */}
             <TextInput
               style={[
-                styles.textInput,
-                { color: foreignFocused ? theme.accentGreen : theme.textPrimary },
+                styles.overlayTextInput,
                 Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null,
               ]}
               value={foreignDisplay}
@@ -429,8 +451,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               onFocus={handleForeignFocus}
               onBlur={() => setForeignFocused(false)}
               keyboardType="numeric"
-              placeholder="0,00"
-              placeholderTextColor={theme.textMuted}
+              caretHidden={true}
             />
           </View>
 
@@ -464,10 +485,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </View>
 
           <View style={styles.inputFlexContainer}>
+            {/* Texto visible: muestra siempre el valor formateado sin saltos de cursor */}
+            <Text
+              style={[
+                styles.displayAmountText,
+                { color: vesFocused ? theme.accentGreen : theme.textPrimary },
+              ]}
+              numberOfLines={1}
+            >
+              {vesDisplay}
+            </Text>
+
+            {/* TextInput transparente que captura toques y teclas sin parpadeo */}
             <TextInput
               style={[
-                styles.textInput,
-                { color: vesFocused ? theme.accentGreen : theme.textPrimary },
+                styles.overlayTextInput,
                 Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null,
               ]}
               value={vesDisplay}
@@ -475,8 +507,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               onFocus={handleVesFocus}
               onBlur={() => setVesFocused(false)}
               keyboardType="numeric"
-              placeholder="0,00"
-              placeholderTextColor={theme.textMuted}
+              caretHidden={true}
             />
           </View>
 
@@ -658,8 +689,10 @@ const styles = StyleSheet.create({
     minWidth: 0,
     paddingHorizontal: 8,
     justifyContent: 'center',
+    position: 'relative',
+    height: 40,
   },
-  textInput: {
+  displayAmountText: {
     width: '100%',
     minWidth: 0,
     fontSize: 24,
@@ -667,6 +700,15 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     padding: 0,
     margin: 0,
+  },
+  overlayTextInput: {
+    ...StyleSheet.absoluteFill,
+    color: 'transparent',
+    fontSize: 24,
+    fontWeight: '800',
+    textAlign: 'right',
+    paddingHorizontal: 8,
+    backgroundColor: 'transparent',
   },
   copyButton: {
     padding: 6,
