@@ -12,6 +12,8 @@ import {
   Platform,
   RefreshControl,
   Keyboard,
+  Dimensions,
+  LayoutChangeEvent,
 } from 'react-native';
 import {
   Menu,
@@ -160,21 +162,44 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
   const [copiedField, setCopiedField] = useState<'foreign' | 'ves' | null>(null);
 
-  // Control de scroll automático hacia el margen superior cuando se abre el teclado
+  // Control de scroll automático: mantiene el logo visible y ubica los botones sobre el teclado
   const scrollViewRef = useRef<ScrollView>(null);
   const [cardY, setCardY] = useState(240);
+  const [cardHeight, setCardHeight] = useState(260);
+  const cardYRef = useRef(cardY);
+  cardYRef.current = cardY;
+  const cardHeightRef = useRef(cardHeight);
+  cardHeightRef.current = cardHeight;
+  const keyboardHeightRef = useRef(0);
   const [isInputFocused, setIsInputFocused] = useState(false);
 
-  // Escuchar cuando el teclado se abre para deslizar suavemente la tarjeta al margen superior
+  // Desplaza la vista lo justo y necesario para que el límite inferior de la tarjeta
+  // (los botones Reiniciar y Comparar) quede directamente sobre el teclado, conservando el logo visible arriba.
+  const scrollToAlignWithKeyboard = (kbHeight?: number) => {
+    const activeKbHeight = kbHeight ?? keyboardHeightRef.current;
+    if (activeKbHeight <= 0) return;
+
+    const windowHeight = Dimensions.get('window').height;
+    const keyboardTop = windowHeight - activeKbHeight;
+    const cardBottom = cardYRef.current + cardHeightRef.current;
+
+    // Solo se desplaza si la tarjeta sobrepasa el borde del teclado (+12px de margen estético)
+    const targetScroll = Math.max(0, cardBottom - keyboardTop + 12);
+    scrollViewRef.current?.scrollTo({ y: targetScroll, animated: true });
+  };
+
   useEffect(() => {
-    const showSub = Keyboard.addListener('keyboardDidShow', () => {
+    const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
       setIsInputFocused(true);
+      const kbHeight = e?.endCoordinates?.height || 280;
+      keyboardHeightRef.current = kbHeight;
       setTimeout(() => {
-        scrollViewRef.current?.scrollTo({ y: Math.max(0, cardY - 10), animated: true });
+        scrollToAlignWithKeyboard(kbHeight);
       }, 50);
     });
 
     const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      keyboardHeightRef.current = 0;
       setIsInputFocused(false);
       setForeignFocused(false);
       setVesFocused(false);
@@ -185,13 +210,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       showSub.remove();
       hideSub.remove();
     };
-  }, [cardY]);
+  }, []);
 
-  const scrollToCardTop = () => {
-    setIsInputFocused(true);
-    setTimeout(() => {
-      scrollViewRef.current?.scrollTo({ y: Math.max(0, cardY - 10), animated: true });
-    }, 100);
+  const handleCardLayout = (e: LayoutChangeEvent) => {
+    const { y, height } = e.nativeEvent.layout;
+    if (y > 0) {
+      setCardY(y);
+      cardYRef.current = y;
+    }
+    if (height > 0) {
+      setCardHeight(height);
+      cardHeightRef.current = height;
+      if (keyboardHeightRef.current > 0) {
+        scrollToAlignWithKeyboard();
+      }
+    }
   };
 
   // Refs para preservar los valores más recientes en efectos y callbacks
@@ -224,15 +257,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const foreignDisplay = formatATM(foreignDigits);
   const vesDisplay = formatATM(vesDigits);
 
-  // ── Manejadores de foco: iluminan en verde y ruedan la tarjeta al margen superior ──
+  // ── Manejadores de foco: iluminan en verde y aseguran posición sobre teclado ──
   const handleForeignFocus = () => {
     setForeignFocused(true);
-    scrollToCardTop();
+    if (keyboardHeightRef.current > 0) {
+      scrollToAlignWithKeyboard();
+    }
   };
 
   const handleVesFocus = () => {
     setVesFocused(true);
-    scrollToCardTop();
+    if (keyboardHeightRef.current > 0) {
+      scrollToAlignWithKeyboard();
+    }
   };
 
   // ── Manejadores de escritura en tiempo real (ATM) ──
@@ -394,10 +431,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
       {/* Tarjeta Principal de Conversión */}
       <View
-        onLayout={(e) => {
-          const y = e.nativeEvent.layout.y;
-          if (y > 0) setCardY(y);
-        }}
+        onLayout={handleCardLayout}
         style={[styles.conversionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
       >
         {/* Píldora Selectora de Tasa */}
@@ -429,21 +463,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </View>
 
           <View style={styles.inputFlexContainer}>
-            {/* Texto visible: muestra siempre el valor formateado sin saltos de cursor */}
-            <Text
-              style={[
-                styles.displayAmountText,
-                { color: foreignFocused ? theme.accentGreen : theme.textPrimary },
-              ]}
-              numberOfLines={1}
-            >
-              {foreignDisplay}
-            </Text>
-
-            {/* TextInput transparente que captura toques y teclas sin parpadeo */}
             <TextInput
               style={[
-                styles.overlayTextInput,
+                styles.textInput,
+                { color: foreignFocused ? theme.accentGreen : theme.textPrimary },
                 Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null,
               ]}
               value={foreignDisplay}
@@ -451,7 +474,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               onFocus={handleForeignFocus}
               onBlur={() => setForeignFocused(false)}
               keyboardType="numeric"
-              caretHidden={true}
+              selection={foreignFocused ? { start: foreignDisplay.length, end: foreignDisplay.length } : undefined}
             />
           </View>
 
@@ -485,21 +508,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </View>
 
           <View style={styles.inputFlexContainer}>
-            {/* Texto visible: muestra siempre el valor formateado sin saltos de cursor */}
-            <Text
-              style={[
-                styles.displayAmountText,
-                { color: vesFocused ? theme.accentGreen : theme.textPrimary },
-              ]}
-              numberOfLines={1}
-            >
-              {vesDisplay}
-            </Text>
-
-            {/* TextInput transparente que captura toques y teclas sin parpadeo */}
             <TextInput
               style={[
-                styles.overlayTextInput,
+                styles.textInput,
+                { color: vesFocused ? theme.accentGreen : theme.textPrimary },
                 Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null,
               ]}
               value={vesDisplay}
@@ -507,7 +519,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               onFocus={handleVesFocus}
               onBlur={() => setVesFocused(false)}
               keyboardType="numeric"
-              caretHidden={true}
+              selection={vesFocused ? { start: vesDisplay.length, end: vesDisplay.length } : undefined}
             />
           </View>
 
@@ -689,26 +701,17 @@ const styles = StyleSheet.create({
     minWidth: 0,
     paddingHorizontal: 8,
     justifyContent: 'center',
-    position: 'relative',
     height: 40,
   },
-  displayAmountText: {
+  textInput: {
     width: '100%',
     minWidth: 0,
     fontSize: 24,
     fontWeight: '800',
     textAlign: 'right',
-    padding: 0,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
     margin: 0,
-  },
-  overlayTextInput: {
-    ...StyleSheet.absoluteFill,
-    color: 'transparent',
-    fontSize: 24,
-    fontWeight: '800',
-    textAlign: 'right',
-    paddingHorizontal: 8,
-    backgroundColor: 'transparent',
   },
   copyButton: {
     padding: 6,
