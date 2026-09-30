@@ -2,6 +2,41 @@
 
 Todas las modificaciones notables a este proyecto serán documentadas en este archivo según el estándar [Semantic Versioning](https://semver.org/).
 
+## [0.0.4] - 2026-09-29
+
+### Calculadora en Tiempo Real e Interacción Financiera ATM
+- **Eliminación de Capas Superpuestas y Números en Negro**:
+  - Se sustituyó la arquitectura de doble capa (`Text` subyacente con `TextInput` transparente superpuesto) por un único `TextInput` directo y reactivo. Esto resuelve de forma definitiva el fallo en Android donde `EditText` ignora el color transparente y dibuja números en negro encima del texto verde, eliminando el parpadeo de capas y caracteres superpuestos.
+  - El cursor de texto se mantiene anclado al final mediante `selection={{ start: length, end: length }}`, garantizando adición y borrado continuo sin saltos erráticos de posición.
+- **Formateo Monetario Progresivo Tipo ATM**:
+  - Al ingresar dígitos en cualquiera de los campos (divisa o Bolívares), los números entran desde los centavos hacia las unidades (`5` -> `0,05`, `52` -> `0,52`, `100000000` -> `1.000.000,00`).
+  - Separación de miles con puntos (`.`) y decimales con coma (`,`), conforme al estándar monetario venezolano.
+  - Indicador visual activo: el campo seleccionado ilumina su borde inferior y su valor numérico en color verde esmeralda.
+- **Acción Contextual "Comparar"**:
+  - Los botones dinámicos de la calculadora ahora son **Reiniciar** y **Comparar**.
+  - Al pulsar **Comparar**, se despliega el modal de cotizaciones aplicando de inmediato el monto editado por el usuario contra todas las divisas (BCV, USDT, Paralelo, Promedio, etc.).
+
+### Scroll Inteligente y Visibilidad del Logotipo
+- **Alineación Exacta con el Borde Superior del Teclado**:
+  - Se implementó un cálculo dinámico de desplazamiento vertical que mide la altura del teclado en pantalla (`keyboardHeight`) y la posición absoluta del panel de cálculo.
+  - La pantalla se desplaza la distancia exacta necesaria para que el límite inferior de la tarjeta (los botones **Reiniciar** y **Comparar**) quede posicionado justo sobre el teclado nativo.
+  - El logotipo central oficial de la aplicación y el encabezado se mantienen completamente visibles durante la escritura, evitando desplazamientos excesivos que ocultaban la identidad visual.
+  - Al cerrar el teclado o pulsar "Reiniciar", la vista retorna suavemente a su posición original (`y: 0`).
+
+### Gestos y Animaciones en Modales Desplegables (Bottom Sheets)
+- **Cierre por Deslizamiento Vertical (Swipe Down to Dismiss)**:
+  - Optimización de los gestos táctiles con `PanResponder` en `RatesModal.tsx` y `DatePickerModal.tsx`, permitiendo cerrar los paneles arrastrándolos suavemente hacia abajo tanto en Expo Go (Android/iOS) como en navegadores web.
+- **Cierre por Toque Externo (Backdrop Tap)**:
+  - Pulsar en el fondo semitransparente superior cierra inmediatamente el modal sin interferir con el área de contenido.
+- **Sincronización de Animaciones**:
+  - El desvanecimiento de la sombra de fondo ahora se ejecuta en paralelo con el deslizamiento de salida de la hoja (`Animated.parallel`), eliminando la sensación de "doble cierre" o sombras residuales rezagadas.
+- **Botón Compartir Restaurado**:
+  - Se reincorporó la acción de compartir en el pie de página de `RatesModal.tsx`, manteniendo tanto "Cerrar" como "Compartir".
+
+### Navegación y Menú Lateral (`SideDrawer.tsx`)
+- **Mayor Margen Inferior**:
+  - Se incrementó el espaciado inferior (`paddingBottom: 44`) en el menú lateral, elevando la tarjeta de versión ("Versión v0.0.4 - Comprobar actualizaciones") por encima de las barras de gestos y navegación de dispositivos Android y Xiaomi/HyperOS.
+
 ## [0.0.3] - 2026-09-29
 
 ### Calculadora Interactiva y Experiencia de Usuario

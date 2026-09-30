@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     height: '100%',
     paddingTop: 54,
     paddingHorizontal: 20,
-    paddingBottom: 28,
+    paddingBottom: 44,
     borderRightWidth: 1,
     justifyContent: 'space-between',
   },
