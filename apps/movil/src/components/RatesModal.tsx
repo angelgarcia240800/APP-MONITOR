@@ -1,19 +1,28 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Modal,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   ScrollView,
   Share,
   ActivityIndicator,
   Platform,
+  Animated,
+  PanResponder,
 } from 'react-native';
 import { RefreshCw, ArrowUp, Share2, Edit3 } from 'lucide-react-native';
 import { RatesData, CurrencyType } from '../types';
 import { formatVES } from '../services/ratesService';
 import { ThemeColors } from '../constants/theme';
+
+export interface CalculatorState {
+  anchor: 'foreign' | 'ves';
+  amount: number;
+  symbol: string;
+}
 
 interface RatesModalProps {
   visible: boolean;
@@ -25,6 +34,24 @@ interface RatesModalProps {
   onRefresh: () => Promise<void>;
   isRefreshing: boolean;
   onOpenCustomRate: () => void;
+  calculatorState?: CalculatorState;
+}
+
+// Formateador venezolano estilo ATM: 1.000.000,00
+function formatATM(raw: string): string {
+  if (!raw || raw === '0') return '0,00';
+  const clean = raw.replace(/^0+/, '') || '0';
+  if (clean === '0') return '0,00';
+  const padded = clean.padStart(3, '0');
+  const intPart = padded.slice(0, -2);
+  const decPart = padded.slice(-2);
+  const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `${formattedInt},${decPart}`;
+}
+
+function numberToDigits(n: number): string {
+  const cents = Math.round(n * 100);
+  return cents > 0 ? String(cents) : '';
 }
 
 export const RatesModal: React.FC<RatesModalProps> = ({
@@ -37,7 +64,49 @@ export const RatesModal: React.FC<RatesModalProps> = ({
   onRefresh,
   isRefreshing,
   onOpenCustomRate,
+  calculatorState,
 }) => {
+  const translateY = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      translateY.setValue(0);
+    }
+  }, [visible]);
+
+  // Gesto de arrastrar hacia abajo para cerrar el modal
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return gestureState.dy > 6 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          translateY.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 70 || gestureState.vy > 0.5) {
+          Animated.timing(translateY, {
+            toValue: 600,
+            duration: 180,
+            useNativeDriver: true,
+          }).start(() => {
+            onClose();
+            translateY.setValue(0);
+          });
+        } else {
+          Animated.spring(translateY, {
+            toValue: 0,
+            useNativeDriver: true,
+            bounciness: 4,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
   const handleShare = async () => {
     try {
       const fecha = rates.bcvUsd.lastUpdated || 'Hoy';
@@ -49,7 +118,7 @@ export const RatesModal: React.FC<RatesModalProps> = ({
         `🪙 USDT P2P: ${formatVES(rates.usdt.rate)} Bs (+${rates.usdt.variationPercentage}%)\n` +
         `⚖️ Promedio: ${formatVES(rates.promedio.rate)} Bs\n` +
         `📈 Brecha ($/USDT): ${rates.brechaUsdtVsBcv}%\n\n` +
-        `📱 App Monitor Móvil`;
+        `📱 Descarga: https://app.rvproyecto.xyz`;
 
       await Share.share({ message });
     } catch (e) {
@@ -61,6 +130,7 @@ export const RatesModal: React.FC<RatesModalProps> = ({
     {
       id: 'USD_BCV' as CurrencyType,
       title: 'Dólar BCV',
+      symbol: '$',
       rate: rates.bcvUsd.rate,
       variationPct: rates.bcvUsd.variationPercentage,
       variationAmount: rates.bcvUsd.variationAmount,
@@ -68,6 +138,7 @@ export const RatesModal: React.FC<RatesModalProps> = ({
     {
       id: 'EUR_BCV' as CurrencyType,
       title: 'Euro',
+      symbol: '€',
       rate: rates.bcvEur.rate,
       variationPct: rates.bcvEur.variationPercentage,
       variationAmount: rates.bcvEur.variationAmount,
@@ -75,6 +146,7 @@ export const RatesModal: React.FC<RatesModalProps> = ({
     {
       id: 'PROMEDIO' as CurrencyType,
       title: 'Promedio',
+      symbol: '$',
       rate: rates.promedio.rate,
       variationPct: rates.promedio.variationPercentage,
       variationAmount: rates.promedio.variationAmount,
@@ -82,6 +154,7 @@ export const RatesModal: React.FC<RatesModalProps> = ({
     {
       id: 'USDT' as CurrencyType,
       title: 'USDT',
+      symbol: '₮',
       rate: rates.usdt.rate,
       variationPct: rates.usdt.variationPercentage,
       variationAmount: rates.usdt.variationAmount,
@@ -89,38 +162,65 @@ export const RatesModal: React.FC<RatesModalProps> = ({
     {
       id: 'CUSTOM' as CurrencyType,
       title: 'Personalizada',
+      symbol: '$',
       rate: rates.custom.rate,
       isCustom: true,
     },
   ];
 
+  const hasCustomComparison = calculatorState && calculatorState.amount > 0;
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      {/* Backdrop bloqueado — no cierra al tocar fuera */}
       <View style={styles.backdrop}>
-        <View style={[styles.sheetContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <View style={[styles.dragHandle, { backgroundColor: theme.borderHighlight }]} />
+        {/* Tocar fuera (backdrop oscuro) cierra el modal */}
+        <TouchableWithoutFeedback onPress={onClose}>
+          <View style={StyleSheet.absoluteFill} />
+        </TouchableWithoutFeedback>
 
-          {/* Header del modal */}
-          <View style={styles.header}>
-            <View>
-              <Text style={[styles.title, { color: theme.textPrimary }]}>Monedas</Text>
-              <Text style={[styles.subtitle, { color: theme.textMuted }]}>
-                {rates.bcvUsd.lastUpdated}, 10:00 AM
-              </Text>
+        {/* Contenedor del Bottom Sheet animado */}
+        <Animated.View
+          style={[
+            styles.sheetContainer,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+              transform: [{ translateY }],
+            },
+          ]}
+        >
+          {/* Zona superior táctil para arrastrar hacia abajo */}
+          <View {...panResponder.panHandlers} style={styles.dragZone}>
+            <View style={[styles.dragHandle, { backgroundColor: theme.borderHighlight }]} />
+
+            {/* Header del modal */}
+            <View style={styles.header}>
+              <View>
+                <Text style={[styles.title, { color: theme.textPrimary }]}>
+                  {hasCustomComparison ? 'Comparar Monedas' : 'Monedas'}
+                </Text>
+                <Text style={[styles.subtitle, { color: theme.textMuted }]}>
+                  {hasCustomComparison
+                    ? calculatorState.anchor === 'foreign'
+                      ? `Monto base: ${formatATM(numberToDigits(calculatorState.amount))} ${calculatorState.symbol}`
+                      : `Monto base: ${formatATM(numberToDigits(calculatorState.amount))} Bs`
+                    : `${rates.bcvUsd.lastUpdated}, 10:00 AM`}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.refreshButton, { backgroundColor: theme.surfaceSubtle, borderColor: theme.border }]}
+                onPress={onRefresh}
+                disabled={isRefreshing}
+                activeOpacity={0.7}
+              >
+                {isRefreshing ? (
+                  <ActivityIndicator size="small" color={theme.textPrimary} />
+                ) : (
+                  <RefreshCw size={20} color={theme.textPrimary} />
+                )}
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              style={[styles.refreshButton, { backgroundColor: theme.surfaceSubtle, borderColor: theme.border }]}
-              onPress={onRefresh}
-              disabled={isRefreshing}
-              activeOpacity={0.7}
-            >
-              {isRefreshing ? (
-                <ActivityIndicator size="small" color={theme.textPrimary} />
-              ) : (
-                <RefreshCw size={20} color={theme.textPrimary} />
-              )}
-            </TouchableOpacity>
           </View>
 
           <ScrollView style={styles.scrollArea} showsVerticalScrollIndicator={false}>
@@ -141,6 +241,23 @@ export const RatesModal: React.FC<RatesModalProps> = ({
             <View style={styles.ratesList}>
               {rateItems.map((item) => {
                 const isSelected = selectedCurrency === item.id;
+
+                // Si hay monto de comparación activo:
+                let displayPrice = `${formatVES(item.rate)} Bs`;
+                let displaySubText = '';
+
+                if (hasCustomComparison) {
+                  if (calculatorState.anchor === 'foreign') {
+                    const converted = item.rate * calculatorState.amount;
+                    displayPrice = `${formatATM(numberToDigits(converted))} Bs`;
+                    displaySubText = `Tasa: ${formatVES(item.rate)} Bs`;
+                  } else {
+                    const converted = item.rate > 0 ? calculatorState.amount / item.rate : 0;
+                    displayPrice = `${formatATM(numberToDigits(converted))} ${item.symbol}`;
+                    displaySubText = `Tasa: ${formatVES(item.rate)} Bs`;
+                  }
+                }
+
                 return (
                   <TouchableOpacity
                     key={item.id}
@@ -192,11 +309,21 @@ export const RatesModal: React.FC<RatesModalProps> = ({
                             isSelected && { color: theme.buttonPrimaryText },
                           ]}
                         >
-                          {formatVES(item.rate)} Bs
+                          {displayPrice}
                         </Text>
                       </View>
 
-                      {item.isCustom ? (
+                      {hasCustomComparison ? (
+                        <Text
+                          style={[
+                            styles.variationText,
+                            { color: theme.textMuted },
+                            isSelected && { color: theme.buttonPrimaryText, opacity: 0.85 },
+                          ]}
+                        >
+                          {displaySubText}
+                        </Text>
+                      ) : item.isCustom ? (
                         <TouchableOpacity
                           style={styles.editCustomButton}
                           onPress={onOpenCustomRate}
@@ -230,7 +357,7 @@ export const RatesModal: React.FC<RatesModalProps> = ({
             </View>
           </ScrollView>
 
-          {/* Botones de acción inferiores */}
+          {/* Botones de acción inferiores: Cerrar y Compartir */}
           <View style={styles.footerRow}>
             <TouchableOpacity
               style={[styles.closeButton, { backgroundColor: theme.surfaceSubtle, borderColor: theme.border }]}
@@ -249,7 +376,7 @@ export const RatesModal: React.FC<RatesModalProps> = ({
               <Text style={[styles.shareButtonText, { color: theme.buttonPrimaryText }]}>Compartir</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -266,22 +393,25 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
     borderTopWidth: 1,
     paddingHorizontal: 20,
-    paddingTop: 12,
     paddingBottom: Platform.OS === 'ios' ? 38 : 46,
     maxHeight: '88%',
   },
+  dragZone: {
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
   dragHandle: {
-    width: 44,
-    height: 4,
-    borderRadius: 2,
+    width: 48,
+    height: 5,
+    borderRadius: 3,
     alignSelf: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 18,
+    marginBottom: 16,
   },
   title: {
     fontSize: 24,

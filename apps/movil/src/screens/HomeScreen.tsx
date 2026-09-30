@@ -30,6 +30,7 @@ import { AppLogo } from '../components/AppLogo';
 import { RatesData, CurrencyType, RateItem } from '../types';
 import { formatVES } from '../services/ratesService';
 import { ThemeColors } from '../constants/theme';
+import { CalculatorState } from '../components/RatesModal';
 
 interface HomeScreenProps {
   rates: RatesData;
@@ -41,29 +42,64 @@ interface HomeScreenProps {
   onRefresh: () => Promise<void>;
   isRefreshing: boolean;
   onOpenDrawer: () => void;
-  onOpenRatesModal: () => void;
+  onOpenRatesModal: (context?: CalculatorState) => void;
   onOpenDatePicker: () => void;
 }
 
-// ---------------------------------------------------------------------------
-// Formato de dígitos estilo cajero/ATM → "1.000.000,00"
-// rawDigits es solo la cadena de dígitos sin separadores, ej: "100000000"
-// ---------------------------------------------------------------------------
-function formatDigits(rawDigits: string): string {
-  if (!rawDigits) return '0,00';
-  const padded = rawDigits.padStart(3, '0');
+// ─────────────────────────────────────────────────────────────────────────────
+// Formateador estilo ATM venezolano: '5' -> '0,05', '52' -> '0,52', '100000000' -> '1.000.000,00'
+// ─────────────────────────────────────────────────────────────────────────────
+function formatATM(raw: string): string {
+  if (!raw || raw === '0') return '0,00';
+  const clean = raw.replace(/^0+/, '') || '0';
+  if (clean === '0') return '0,00';
+  const padded = clean.padStart(3, '0');
   const intPart = padded.slice(0, -2);
   const decPart = padded.slice(-2);
-  const intClean = intPart.replace(/^0+/, '') || '0';
-  const intFormatted = intClean.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  return `${intFormatted},${decPart}`;
+  const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `${formattedInt},${decPart}`;
 }
 
-function getNumericValue(rawDigits: string): number {
-  return parseInt(rawDigits || '0', 10) / 100;
+function digitsToNumber(raw: string): number {
+  if (!raw) return 0;
+  return parseInt(raw, 10) / 100;
 }
 
-// ---------------------------------------------------------------------------
+function numberToDigits(n: number): string {
+  if (!n || isNaN(n) || n <= 0) return '';
+  const cents = Math.round(n * 100);
+  return cents > 0 ? String(cents) : '';
+}
+
+// Procesa la entrada de texto comparándola con el valor previo formateado
+function handleATMChange(incomingText: string, prevDisplay: string, prevRaw: string): string {
+  if (!incomingText) return '';
+
+  // Detección de borrado (backspace)
+  if (incomingText.length < prevDisplay.length) {
+    return prevRaw.slice(0, -1);
+  }
+
+  // Detección de carácter individual añadido
+  if (incomingText.length === prevDisplay.length + 1) {
+    let addedChar = '';
+    for (let i = 0; i < incomingText.length; i++) {
+      if (i >= prevDisplay.length || incomingText[i] !== prevDisplay[i]) {
+        if (/^[0-9]$/.test(incomingText[i])) {
+          addedChar = incomingText[i];
+          break;
+        }
+      }
+    }
+    if (addedChar) {
+      return (prevRaw + addedChar).replace(/^0+/, '');
+    }
+  }
+
+  // Pegado o caracteres múltiples: extraer dígitos numéricos
+  const digits = incomingText.replace(/[^0-9]/g, '').replace(/^0+/, '');
+  return digits;
+}
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
   rates,
@@ -78,18 +114,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onOpenRatesModal,
   onOpenDatePicker,
 }) => {
-  // rawDigits: solo dígitos, sin separadores. '100' = 1,00 (valor inicial)
-  const [rawDigits, setRawDigits] = useState('100');
-  // hasAutoCleared: la primera vez que el usuario toca el input se limpia a 0,00
-  const [hasAutoCleared, setHasAutoCleared] = useState(false);
-  // isForeignFocused: controla el borde verde
-  const [isForeignFocused, setIsForeignFocused] = useState(false);
-  const [vesAmount, setVesAmount] = useState('');
-  const [copiedField, setCopiedField] = useState<'foreign' | 'ves' | null>(null);
-
-  // Guardamos el rawDigits anterior para detectar digit añadido vs borrado
-  const prevRawRef = useRef(rawDigits);
-
   const getActiveRateItem = (): RateItem => {
     switch (selectedCurrency) {
       case 'USD_BCV':  return rates.bcvUsd;
@@ -104,91 +128,138 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
   const activeRate = getActiveRateItem();
 
-  // Recalcular Bs cuando cambia la tasa activa o la moneda
+  // Dígitos almacenados internamente (solo números sin formato)
+  const [foreignDigits, setForeignDigits] = useState('100'); // Inicial: 1,00
+  const [vesDigits, setVesDigits] = useState(() => numberToDigits(activeRate.rate));
+
+  // Estados de foco (controlan si la línea inferior se ilumina en verde)
+  const [foreignFocused, setForeignFocused] = useState(false);
+  const [vesFocused, setVesFocused] = useState(false);
+
+  // Flags para limpiar a 0,00 solo la primera vez que se toca cada campo
+  const [foreignCleared, setForeignCleared] = useState(false);
+  const [vesCleared, setVesCleared] = useState(false);
+
+  // Ancla de cálculo: 'foreign' o 'ves'
+  const [lastEdited, setLastEdited] = useState<'foreign' | 'ves'>('foreign');
+  const [hasUserEdited, setHasUserEdited] = useState(false);
+
+  const [copiedField, setCopiedField] = useState<'foreign' | 'ves' | null>(null);
+
+  // Refs para preservar los valores más recientes en efectos y callbacks
+  const foreignDigitsRef = useRef(foreignDigits);
+  const vesDigitsRef = useRef(vesDigits);
+  const lastEditedRef = useRef(lastEdited);
+  foreignDigitsRef.current = foreignDigits;
+  vesDigitsRef.current = vesDigits;
+  lastEditedRef.current = lastEdited;
+
+  // Recálculo automático al cambiar de tasa o moneda
   useEffect(() => {
-    const val = getNumericValue(rawDigits);
-    setVesAmount(formatVES(val * activeRate.rate));
+    const fd = foreignDigitsRef.current;
+    const vd = vesDigitsRef.current;
+
+    if (lastEditedRef.current === 'ves') {
+      // Bs es el monto base -> se recalcula la moneda extranjera
+      const vNum = digitsToNumber(vd);
+      const fNum = activeRate.rate > 0 ? vNum / activeRate.rate : 0;
+      setForeignDigits(numberToDigits(fNum));
+    } else {
+      // Moneda extranjera es el monto base -> se recalcula en Bs
+      const fNum = digitsToNumber(fd);
+      const vNum = fNum * activeRate.rate;
+      setVesDigits(numberToDigits(vNum));
+    }
   }, [activeRate.rate, selectedCurrency]);
 
-  // -----------------------------------------------------------------------
-  // Input ATM — divisa extranjera
-  // -----------------------------------------------------------------------
+  // Valores de visualización en pantalla
+  const foreignDisplay = formatATM(foreignDigits);
+  const vesDisplay = formatATM(vesDigits);
+
+  // ── Manejadores de foco con auto-clear primera vez ──
   const handleForeignFocus = () => {
-    setIsForeignFocused(true);
-    if (!hasAutoCleared) {
-      // Primera vez: borrar a 0,00 y entrar en modo edición
-      setRawDigits('');
-      prevRawRef.current = '';
-      setVesAmount(formatVES(0));
-      setHasAutoCleared(true);
+    setForeignFocused(true);
+    if (!foreignCleared) {
+      // Primera vez: limpiar a 0,00 e iniciar edición
+      setForeignDigits('');
+      setVesDigits('');
+      setForeignCleared(true);
+      setHasUserEdited(true);
+      setLastEdited('foreign');
     }
   };
 
-  const handleForeignBlur = () => {
-    setIsForeignFocused(false);
-    // Si quedó vacío al salir, mostrar 0,00
-    if (!rawDigits) {
-      setVesAmount(formatVES(0));
+  const handleVesFocus = () => {
+    setVesFocused(true);
+    if (!vesCleared) {
+      // Primera vez: limpiar a 0,00 e iniciar edición
+      setVesDigits('');
+      setForeignDigits('');
+      setVesCleared(true);
+      setHasUserEdited(true);
+      setLastEdited('ves');
     }
   };
 
-  const handleForeignChange = (newText: string) => {
-    // Extraer solo dígitos del texto recibido
-    const newOnlyDigits = newText.replace(/[^0-9]/g, '');
-    const prevDigits = prevRawRef.current;
+  // ── Manejadores de escritura en tiempo real (ATM) ──
+  const handleForeignTextChange = (text: string) => {
+    setLastEdited('foreign');
+    setHasUserEdited(true);
 
-    let nextRaw: string;
+    const nextRaw = handleATMChange(text, foreignDisplay, foreignDigits);
+    setForeignDigits(nextRaw);
 
-    if (newOnlyDigits.length > prevDigits.length) {
-      // Se añadió un dígito — tomamos solo el último dígito nuevo
-      const addedDigit = newOnlyDigits[newOnlyDigits.length - 1];
-      // Concatenar y quitar ceros iniciales innecesarios
-      const combined = prevDigits + addedDigit;
-      nextRaw = combined.replace(/^0+(\d)/, '$1');
-    } else if (newOnlyDigits.length < prevDigits.length) {
-      // Borrar (backspace)
-      nextRaw = prevDigits.slice(0, -1);
-    } else {
-      // Sin cambio real
-      return;
-    }
-
-    prevRawRef.current = nextRaw;
-    setRawDigits(nextRaw);
-    const val = getNumericValue(nextRaw);
-    setVesAmount(formatVES(val * activeRate.rate));
+    const fNum = digitsToNumber(nextRaw);
+    const vNum = fNum * activeRate.rate;
+    setVesDigits(numberToDigits(vNum));
   };
 
-  // -----------------------------------------------------------------------
-  // Input Bs (campo VES — libre)
-  // -----------------------------------------------------------------------
-  const handleVesChange = (text: string) => {
-    setVesAmount(text);
-    const clean = text.replace(/\./g, '').replace(',', '.');
-    const vVal = parseFloat(clean);
-    if (!isNaN(vVal) && activeRate.rate > 0) {
-      const centavos = Math.round((vVal / activeRate.rate) * 100);
-      const nextRaw = centavos > 0 ? String(centavos) : '';
-      prevRawRef.current = nextRaw;
-      setRawDigits(nextRaw);
-    } else {
-      prevRawRef.current = '';
-      setRawDigits('');
-    }
+  const handleVesTextChange = (text: string) => {
+    setLastEdited('ves');
+    setHasUserEdited(true);
+
+    const nextRaw = handleATMChange(text, vesDisplay, vesDigits);
+    setVesDigits(nextRaw);
+
+    const vNum = digitsToNumber(nextRaw);
+    const fNum = activeRate.rate > 0 ? vNum / activeRate.rate : 0;
+    setForeignDigits(numberToDigits(fNum));
   };
 
-  // -----------------------------------------------------------------------
-  // Copiar
-  // -----------------------------------------------------------------------
+  // ── Reiniciar calculadora ──
+  const handleResetCalculator = () => {
+    const initialForeign = '100'; // 1,00
+    const initialVes = numberToDigits(activeRate.rate);
+
+    setForeignDigits(initialForeign);
+    setVesDigits(initialVes);
+
+    // Permite que la próxima vez que toque vuelva a ponerse en 0
+    setForeignCleared(false);
+    setVesCleared(false);
+
+    setLastEdited('foreign');
+    setHasUserEdited(false);
+  };
+
+  // ── Comparar tasas ──
+  const handleOpenComparison = () => {
+    const amount = lastEdited === 'foreign' ? digitsToNumber(foreignDigits) : digitsToNumber(vesDigits);
+    onOpenRatesModal({
+      anchor: lastEdited,
+      amount,
+      symbol: activeRate.symbol,
+    });
+  };
+
+  // ── Copiar ──
   const handleCopy = (value: string, field: 'foreign' | 'ves') => {
     Clipboard.setString(value);
     setCopiedField(field);
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  // -----------------------------------------------------------------------
-  // Compartir app (barra superior)
-  // -----------------------------------------------------------------------
+  // ── Compartir App ──
   const handleShareApp = async () => {
     try {
       const msg =
@@ -204,23 +275,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       console.warn('Error al compartir:', e);
     }
   };
-
-  // -----------------------------------------------------------------------
-  // Reiniciar calculadora → vuelve a 1,00 y habilita el auto-clear de nuevo
-  // -----------------------------------------------------------------------
-  const handleResetCalculator = () => {
-    const next = '100'; // 1,00
-    prevRawRef.current = next;
-    setRawDigits(next);
-    setHasAutoCleared(false); // próximo foco volverá a auto-limpiar
-    setVesAmount(formatVES(activeRate.rate));
-  };
-
-  // Mostrar botones Reiniciar / Comparar cuando el valor es distinto a 1,00
-  const foreignNumeric = getNumericValue(rawDigits);
-  const isCustomCalculation = rawDigits !== '100' && rawDigits !== '';
-
-  const foreignDisplayValue = formatDigits(rawDigits);
 
   return (
     <ScrollView
@@ -241,11 +295,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     >
       {/* Barra Superior */}
       <View style={styles.topBar}>
-        <TouchableOpacity
-          style={styles.iconButton}
-          onPress={onOpenDrawer}
-          activeOpacity={0.7}
-        >
+        <TouchableOpacity style={styles.iconButton} onPress={onOpenDrawer} activeOpacity={0.7}>
           <Menu size={26} color={theme.textPrimary} />
         </TouchableOpacity>
 
@@ -263,17 +313,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.iconButton}
-            onPress={handleShareApp}
-            activeOpacity={0.7}
-          >
+          <TouchableOpacity style={styles.iconButton} onPress={handleShareApp} activeOpacity={0.7}>
             <Share2 size={24} color={theme.textPrimary} />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Logotipo Central Oficial con flechas verdes */}
+      {/* Logotipo Central Oficial */}
       <View style={styles.logoWrapper}>
         <AppLogo size={145} isDark={isDark} useImage={true} />
       </View>
@@ -283,7 +329,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         {/* Píldora Selectora de Tasa */}
         <TouchableOpacity
           style={[styles.rateSelectorPill, { backgroundColor: theme.pillBg }]}
-          onPress={onOpenRatesModal}
+          onPress={() => onOpenRatesModal()}
           activeOpacity={0.8}
         >
           <Text style={[styles.rateSelectorText, { color: theme.pillText }]}>
@@ -292,15 +338,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <MoreVertical size={18} color={theme.pillText} />
         </TouchableOpacity>
 
-        {/* Fila 1: Monto en Divisa Extranjera — input estilo ATM */}
+        {/* Fila 1: Monto en Divisa Extranjera (con borde verde al enfocar) */}
         <View
           style={[
             styles.inputRow,
             {
-              borderBottomColor: isForeignFocused
-                ? theme.accentGreen
-                : theme.border,
-              borderBottomWidth: isForeignFocused ? 2 : 1,
+              borderBottomColor: foreignFocused ? theme.accentGreen : theme.border,
+              borderBottomWidth: foreignFocused ? 2 : 1,
             },
           ]}
         >
@@ -314,23 +358,22 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <TextInput
               style={[
                 styles.textInput,
-                { color: isForeignFocused ? theme.accentGreen : theme.textPrimary },
+                { color: foreignFocused ? theme.accentGreen : theme.textPrimary },
                 Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null,
               ]}
-              value={foreignDisplayValue}
-              onChangeText={handleForeignChange}
+              value={foreignDisplay}
+              onChangeText={handleForeignTextChange}
               onFocus={handleForeignFocus}
-              onBlur={handleForeignBlur}
+              onBlur={() => setForeignFocused(false)}
               keyboardType="numeric"
               placeholder="0,00"
               placeholderTextColor={theme.textMuted}
-              caretHidden={true}
             />
           </View>
 
           <TouchableOpacity
             style={styles.copyButton}
-            onPress={() => handleCopy(foreignDisplayValue, 'foreign')}
+            onPress={() => handleCopy(foreignDisplay, 'foreign')}
             activeOpacity={0.7}
           >
             {copiedField === 'foreign' ? (
@@ -341,8 +384,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </TouchableOpacity>
         </View>
 
-        {/* Fila 2: Monto en Bolívares (Bs) */}
-        <View style={[styles.inputRow, { borderBottomColor: theme.border }]}>
+        {/* Fila 2: Monto en Bolívares (Bs) (con borde verde al enfocar) */}
+        <View
+          style={[
+            styles.inputRow,
+            {
+              borderBottomColor: vesFocused ? theme.accentGreen : theme.border,
+              borderBottomWidth: vesFocused ? 2 : 1,
+            },
+          ]}
+        >
           <View style={styles.symbolBox}>
             <Text style={[styles.currencySymbol, { color: theme.textPrimary }]}>
               Bs
@@ -353,11 +404,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <TextInput
               style={[
                 styles.textInput,
-                { color: theme.textPrimary },
+                { color: vesFocused ? theme.accentGreen : theme.textPrimary },
                 Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null,
               ]}
-              value={vesAmount}
-              onChangeText={handleVesChange}
+              value={vesDisplay}
+              onChangeText={handleVesTextChange}
+              onFocus={handleVesFocus}
+              onBlur={() => setVesFocused(false)}
               keyboardType="numeric"
               placeholder="0,00"
               placeholderTextColor={theme.textMuted}
@@ -366,7 +419,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
           <TouchableOpacity
             style={styles.copyButton}
-            onPress={() => handleCopy(vesAmount, 'ves')}
+            onPress={() => handleCopy(vesDisplay, 'ves')}
             activeOpacity={0.7}
           >
             {copiedField === 'ves' ? (
@@ -377,20 +430,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </TouchableOpacity>
         </View>
 
-        {/* Variación e Indicador con Flecha Verde */}
-        <View style={styles.variationRow}>
-          <View style={styles.variationBadge}>
-            <ArrowUp size={16} color={theme.accentGreen} strokeWidth={2.5} style={{ marginRight: 6 }} />
-            <Text style={[styles.variationText, { color: theme.accentGreen }]}>
-              +{formatVES(activeRate.variationAmount || 1.34)} Bs (
-              {activeRate.variationPercentage || 0.16}%)
-            </Text>
-          </View>
-          <TrendingUp size={18} color={theme.textMuted} />
-        </View>
-
-        {/* Botones de Reiniciar y Comparar */}
-        {isCustomCalculation && (
+        {/* Mutuamente excluyente: Si se modifica, los botones reemplazan la variación */}
+        {hasUserEdited ? (
           <View style={[styles.calcActionsRow, { borderTopColor: theme.border }]}>
             <TouchableOpacity
               style={[
@@ -408,7 +449,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
             <TouchableOpacity
               style={[styles.calcShareButton, { backgroundColor: theme.accentGreen }]}
-              onPress={onOpenRatesModal}
+              onPress={handleOpenComparison}
               activeOpacity={0.8}
             >
               <BarChart2 size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
@@ -417,10 +458,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               </Text>
             </TouchableOpacity>
           </View>
+        ) : (
+          <View style={styles.variationRow}>
+            <View style={styles.variationBadge}>
+              <ArrowUp size={16} color={theme.accentGreen} strokeWidth={2.5} style={{ marginRight: 6 }} />
+              <Text style={[styles.variationText, { color: theme.accentGreen }]}>
+                +{formatVES(activeRate.variationAmount || 1.34)} Bs (
+                {activeRate.variationPercentage || 0.16}%)
+              </Text>
+            </View>
+            <TrendingUp size={18} color={theme.textMuted} />
+          </View>
         )}
       </View>
 
-      {/* Selector de Fecha Interactivo (Abre DatePickerModal) */}
+      {/* Selector de Fecha */}
       <View style={styles.dateRow}>
         <TouchableOpacity
           style={[styles.datePill, { backgroundColor: theme.surface, borderColor: theme.border }]}
@@ -441,11 +493,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </TouchableOpacity>
       </View>
 
-      {/* Botón de Acción Principal (Tasas y Monedas) */}
+      {/* Botón Principal: Ver Lista de Tasas y Monedas */}
       <View style={styles.actionButtonsRow}>
         <TouchableOpacity
           style={[styles.actionButtonWide, { backgroundColor: theme.surface, borderColor: theme.border }]}
-          onPress={onOpenRatesModal}
+          onPress={() => onOpenRatesModal()}
           activeOpacity={0.8}
         >
           <List size={22} color={theme.textPrimary} style={{ marginRight: 10 }} />
@@ -455,14 +507,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </TouchableOpacity>
       </View>
 
-      {/* Pie de página con fuente oficial */}
+      {/* Pie institucional y fuente oficial */}
       <Text style={[styles.footnote, { color: theme.textMuted }]}>
         {selectedCurrency === 'USDT'
           ? 'Cotización promedio USDT obtenida en tiempo real de Binance P2P.'
           : 'Tasa oficial publicada por el Banco Central de Venezuela en bcv.org.ve.'}
       </Text>
 
-      {/* Banner / Pie Institucional */}
       <View style={[styles.footerBanner, { backgroundColor: theme.surface, borderColor: theme.border }]}>
         <Text style={[styles.footerBannerText, { color: theme.textMuted }]}>
           APP-MONITOR • MONITOR DOLAR & USDT
@@ -473,9 +524,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   contentContainer: {
     paddingHorizontal: 20,
     paddingTop: 50,
@@ -492,9 +541,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
   },
-  iconButton: {
-    padding: 6,
-  },
+  iconButton: { padding: 6 },
   logoWrapper: {
     alignItems: 'center',
     marginVertical: 14,
@@ -530,7 +577,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 10,
-    borderBottomWidth: 1,
     width: '100%',
     minWidth: 0,
   },

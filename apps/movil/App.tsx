@@ -13,7 +13,7 @@ import { BcvRatesScreen } from './src/screens/BcvRatesScreen';
 import { UsdtRatesScreen } from './src/screens/UsdtRatesScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { SplashScreen } from './src/screens/SplashScreen';
-import { RatesModal } from './src/components/RatesModal';
+import { RatesModal, CalculatorState } from './src/components/RatesModal';
 import { SideDrawer, DrawerScreenType } from './src/components/SideDrawer';
 import { UpdateModal } from './src/components/UpdateModal';
 import { CustomRateModal } from './src/components/CustomRateModal';
@@ -118,6 +118,7 @@ export default function App() {
   // Modals
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isRatesModalOpen, setIsRatesModalOpen] = useState(false);
+  const [ratesModalContext, setRatesModalContext] = useState<CalculatorState | undefined>(undefined);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [isCustomRateOpen, setIsCustomRateOpen] = useState(false);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
@@ -307,7 +308,10 @@ export default function App() {
             onRefresh={() => refreshRates(true)}
             isRefreshing={isRefreshing}
             onOpenDrawer={() => setIsDrawerOpen(true)}
-            onOpenRatesModal={() => setIsRatesModalOpen(true)}
+            onOpenRatesModal={(ctx) => {
+              setRatesModalContext(ctx);
+              setIsRatesModalOpen(true);
+            }}
             onOpenDatePicker={() => setIsDatePickerOpen(true)}
           />
         )}
@@ -346,12 +350,16 @@ export default function App() {
         <RatesModal
           visible={isRatesModalOpen}
           theme={theme}
-          onClose={() => setIsRatesModalOpen(false)}
+          onClose={() => {
+            setIsRatesModalOpen(false);
+            setRatesModalContext(undefined);
+          }}
           rates={rates}
           selectedCurrency={selectedCurrency}
           onSelectCurrency={handleSelectCurrency}
           onRefresh={() => refreshRates(true)}
           isRefreshing={isRefreshing}
+          calculatorState={ratesModalContext}
           onOpenCustomRate={() => {
             setIsRatesModalOpen(false);
             setIsCustomRateOpen(true);

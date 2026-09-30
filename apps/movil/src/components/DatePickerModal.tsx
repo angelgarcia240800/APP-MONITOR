@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Modal,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   ScrollView,
   Platform,
+  Animated,
+  PanResponder,
 } from 'react-native';
 import {
   Calendar,
@@ -164,21 +167,80 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
     dayCells.push(d);
   }
 
+  const translateY = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      translateY.setValue(0);
+    }
+  }, [visible]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return gestureState.dy > 6 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          translateY.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 70 || gestureState.vy > 0.5) {
+          Animated.timing(translateY, {
+            toValue: 600,
+            duration: 180,
+            useNativeDriver: true,
+          }).start(() => {
+            onClose();
+            translateY.setValue(0);
+          });
+        } else {
+          Animated.spring(translateY, {
+            toValue: 0,
+            useNativeDriver: true,
+            bounciness: 4,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.backdrop}>
-        <View style={[styles.sheet, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.titleRow}>
-              <Calendar size={22} color={theme.textPrimary} />
-              <Text style={[styles.title, { color: theme.textPrimary }]}>
-                Cotizaciones Históricas
-              </Text>
+        {/* Tocar fuera (backdrop oscuro) cierra el modal */}
+        <TouchableWithoutFeedback onPress={onClose}>
+          <View style={StyleSheet.absoluteFill} />
+        </TouchableWithoutFeedback>
+
+        <Animated.View
+          style={[
+            styles.sheet,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+              transform: [{ translateY }],
+            },
+          ]}
+        >
+          {/* Zona superior táctil para arrastrar hacia abajo */}
+          <View {...panResponder.panHandlers} style={styles.dragZone}>
+            <View style={[styles.dragHandle, { backgroundColor: theme.borderHighlight }]} />
+
+            {/* Header */}
+            <View style={styles.header}>
+              <View style={styles.titleRow}>
+                <Calendar size={22} color={theme.textPrimary} />
+                <Text style={[styles.title, { color: theme.textPrimary }]}>
+                  Cotizaciones Históricas
+                </Text>
+              </View>
+              <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                <X size={20} color={theme.textMuted} />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <X size={20} color={theme.textMuted} />
-            </TouchableOpacity>
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false}>
@@ -338,7 +400,7 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
               </Text>
             </TouchableOpacity>
           </ScrollView>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -354,10 +416,20 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 20,
-    paddingTop: 18,
     paddingBottom: Platform.OS === 'ios' ? 38 : 46,
     maxHeight: '92%',
     borderTopWidth: 1,
+  },
+  dragZone: {
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  dragHandle: {
+    width: 48,
+    height: 5,
+    borderRadius: 3,
+    alignSelf: 'center',
+    marginBottom: 14,
   },
   header: {
     flexDirection: 'row',
