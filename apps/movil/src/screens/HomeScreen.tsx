@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Platform,
   RefreshControl,
+  Keyboard,
 } from 'react-native';
 import {
   Menu,
@@ -159,6 +160,29 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
   const [copiedField, setCopiedField] = useState<'foreign' | 'ves' | null>(null);
 
+  // Control de scroll automático hacia el margen superior cuando se abre el teclado
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [cardY, setCardY] = useState(240);
+  const [isInputFocused, setIsInputFocused] = useState(false);
+
+  // Escuchar cuando el teclado se oculta para regresar el scroll a su posición original
+  useEffect(() => {
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      setIsInputFocused(false);
+      setForeignFocused(false);
+      setVesFocused(false);
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    });
+    return () => hideSub.remove();
+  }, []);
+
+  const scrollToCardTop = () => {
+    setIsInputFocused(true);
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: Math.max(0, cardY - 15), animated: true });
+    }, 100);
+  };
+
   // Refs para preservar los valores más recientes en efectos y callbacks
   const foreignDigitsRef = useRef(foreignDigits);
   const vesDigitsRef = useRef(vesDigits);
@@ -189,13 +213,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const foreignDisplay = formatATM(foreignDigits);
   const vesDisplay = formatATM(vesDigits);
 
-  // ── Manejadores de foco: solo iluminan la línea inferior en verde, NUNCA ponen en 0 ──
+  // ── Manejadores de foco: iluminan en verde y ruedan la tarjeta al margen superior ──
   const handleForeignFocus = () => {
     setForeignFocused(true);
+    scrollToCardTop();
   };
 
   const handleVesFocus = () => {
     setVesFocused(true);
+    scrollToCardTop();
   };
 
   // ── Manejadores de escritura en tiempo real (ATM) ──
@@ -265,6 +291,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
     setLastEdited('foreign');
     setHasUserEdited(false);
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    Keyboard.dismiss();
   };
 
   // ── Comparar tasas ──
@@ -303,8 +331,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
   return (
     <ScrollView
+      ref={scrollViewRef}
       style={[styles.container, { backgroundColor: theme.background }]}
-      contentContainerStyle={styles.contentContainer}
+      contentContainerStyle={[
+        styles.contentContainer,
+        isInputFocused && { paddingBottom: 420 },
+      ]}
       bounces={true}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
@@ -350,7 +382,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       </View>
 
       {/* Tarjeta Principal de Conversión */}
-      <View style={[styles.conversionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+      <View
+        onLayout={(e) => {
+          const y = e.nativeEvent.layout.y;
+          if (y > 0) setCardY(y);
+        }}
+        style={[styles.conversionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
+      >
         {/* Píldora Selectora de Tasa */}
         <TouchableOpacity
           style={[styles.rateSelectorPill, { backgroundColor: theme.pillBg }]}

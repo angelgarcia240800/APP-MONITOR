@@ -66,13 +66,46 @@ export const RatesModal: React.FC<RatesModalProps> = ({
   onOpenCustomRate,
   calculatorState,
 }) => {
-  const translateY = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(500)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
+  // Apertura sincronizada: la sombra y la tarjeta aparecen juntas
   useEffect(() => {
     if (visible) {
-      translateY.setValue(0);
+      translateY.setValue(500);
+      fadeAnim.setValue(0);
+      Animated.parallel([
+        Animated.timing(translateY, {
+          toValue: 0,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+      ]).start();
     }
   }, [visible]);
+
+  // Cierre sincronizado: la sombra y la tarjeta se van juntas
+  const handleClose = () => {
+    Animated.parallel([
+      Animated.timing(translateY, {
+        toValue: 500,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onClose();
+    });
+  };
 
   // Gesto de arrastrar hacia abajo para cerrar el modal
   const panResponder = useRef(
@@ -84,17 +117,26 @@ export const RatesModal: React.FC<RatesModalProps> = ({
       onPanResponderMove: (_, gestureState) => {
         if (gestureState.dy > 0) {
           translateY.setValue(gestureState.dy);
+          // La sombra se desvanece gradualmente con el arrastre
+          const opacity = Math.max(0, 1 - gestureState.dy / 280);
+          fadeAnim.setValue(opacity);
         }
       },
       onPanResponderRelease: (_, gestureState) => {
         if (gestureState.dy > 60 || gestureState.vy > 0.4) {
-          onClose();
+          handleClose();
         } else {
-          Animated.spring(translateY, {
-            toValue: 0,
-            useNativeDriver: true,
-            bounciness: 4,
-          }).start();
+          Animated.parallel([
+            Animated.spring(translateY, {
+              toValue: 0,
+              useNativeDriver: true,
+              bounciness: 4,
+            }),
+            Animated.spring(fadeAnim, {
+              toValue: 1,
+              useNativeDriver: true,
+            }),
+          ]).start();
         }
       },
     })
@@ -164,10 +206,10 @@ export const RatesModal: React.FC<RatesModalProps> = ({
   const hasCustomComparison = calculatorState && calculatorState.amount > 0;
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={handleClose}>
+      <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
         {/* Tocar fuera (backdrop oscuro) cierra el modal */}
-        <TouchableWithoutFeedback onPress={onClose}>
+        <TouchableWithoutFeedback onPress={handleClose}>
           <View style={StyleSheet.absoluteFill} />
         </TouchableWithoutFeedback>
 
@@ -354,7 +396,7 @@ export const RatesModal: React.FC<RatesModalProps> = ({
           <View style={styles.footerRow}>
             <TouchableOpacity
               style={[styles.closeButton, { backgroundColor: theme.surfaceSubtle, borderColor: theme.border }]}
-              onPress={onClose}
+              onPress={handleClose}
               activeOpacity={0.7}
             >
               <Text style={[styles.closeButtonText, { color: theme.textPrimary }]}>Cerrar</Text>
@@ -370,7 +412,7 @@ export const RatesModal: React.FC<RatesModalProps> = ({
             </TouchableOpacity>
           </View>
         </Animated.View>
-      </View>
+      </Animated.View>
     </Modal>
   );
 };
